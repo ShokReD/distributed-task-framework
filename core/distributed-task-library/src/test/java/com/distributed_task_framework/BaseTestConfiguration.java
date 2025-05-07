@@ -1,5 +1,6 @@
 package com.distributed_task_framework;
 
+import com.distributed_task_framework.listener.StartBackgroundJobsListener;
 import com.distributed_task_framework.mapper.CommandMapper;
 import com.distributed_task_framework.mapper.NodeStateMapper;
 import com.distributed_task_framework.mapper.PartitionMapper;
@@ -125,6 +126,12 @@ import static org.mockito.Mockito.doReturn;
 @EnableTransactionManagement
 @EnableCaching
 public class BaseTestConfiguration {
+
+    @Bean
+    public StartBackgroundJobsListener startBackgroundJobsListener() {
+        return new StartBackgroundJobsListener();
+    }
+
     @Bean
     public TestClock distributedTaskInternalClock() {
         return new TestClock();

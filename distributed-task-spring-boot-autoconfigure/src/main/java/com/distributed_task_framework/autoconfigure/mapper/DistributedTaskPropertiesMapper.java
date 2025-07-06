@@ -2,7 +2,7 @@ package com.distributed_task_framework.autoconfigure.mapper;
 
 import com.distributed_task_framework.exception.TaskConfigurationException;
 import com.distributed_task_framework.settings.CommonSettings;
-import com.distributed_task_framework.settings.Retry;
+import com.distributed_task_framework.settings.RetryV1;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.google.common.collect.ImmutableRangeMap;
 import com.google.common.collect.Maps;
@@ -116,7 +116,7 @@ public interface DistributedTaskPropertiesMapper {
         return mergedManagerSettings;
     }
 
-    default Retry merge(@MappingTarget Retry defaultRetrySettings, DistributedTaskProperties.Retry retry) {
+    default RetryV1 merge(@MappingTarget RetryV1 defaultRetrySettings, DistributedTaskProperties.Retry retry) {
         if (retry == null) {
             return defaultRetrySettings.toBuilder()
                     .build();
@@ -143,9 +143,9 @@ public interface DistributedTaskPropertiesMapper {
         return map(defaultRetryProperties);
     }
 
-    Retry map(DistributedTaskProperties.Retry defaultRetryProperties);
+    RetryV1 map(DistributedTaskProperties.Retry defaultRetryProperties);
 
-    DistributedTaskProperties.Retry map(Retry defaultRetrySettings);
+    DistributedTaskProperties.Retry map(RetryV1 defaultRetrySettings);
 
     DistributedTaskProperties.Retry mergeInternal(@MappingTarget DistributedTaskProperties.Retry defaultRetrySettings,
                                                   DistributedTaskProperties.Retry retry);

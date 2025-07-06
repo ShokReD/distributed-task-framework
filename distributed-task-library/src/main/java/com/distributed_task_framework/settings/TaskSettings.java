@@ -40,7 +40,7 @@ public class TaskSettings {
      * Retry policy for task.
      */
     @Builder.Default
-    Retry retry = CommonSettings.DEFAULT_RETRY.toBuilder().build();
+    RetryV1 retry = CommonSettings.DEFAULT_RETRY.toBuilder().build();
 
     /**
      * How many parallel tasks can be in the cluster.

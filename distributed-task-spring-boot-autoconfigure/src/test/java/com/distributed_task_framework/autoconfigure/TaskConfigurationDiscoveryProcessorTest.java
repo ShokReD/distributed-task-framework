@@ -10,7 +10,7 @@ import com.distributed_task_framework.model.TaskDef;
 import com.distributed_task_framework.service.DistributedTaskService;
 import com.distributed_task_framework.settings.Backoff;
 import com.distributed_task_framework.settings.Fixed;
-import com.distributed_task_framework.settings.Retry;
+import com.distributed_task_framework.settings.RetryV1;
 import com.distributed_task_framework.settings.RetryMode;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.task.Task;
@@ -95,7 +95,7 @@ class TaskConfigurationDiscoveryProcessorTest {
         TaskSettings taskSettings = TaskSettings.DEFAULT.toBuilder()
             .maxParallelInCluster(200)
             .cron("*/2 * * * * *")
-            .retry(Retry.builder()
+            .retry(RetryV1.builder()
                 .retryMode(RetryMode.BACKOFF)
                 .fixed(TaskSettings.DEFAULT.getRetry().getFixed())
                 .backoff(Backoff.builder()
@@ -179,7 +179,7 @@ class TaskConfigurationDiscoveryProcessorTest {
             .cron("* */10 * * *")
             .executionGuarantees(TaskSettings.ExecutionGuarantees.EXACTLY_ONCE)
             .dltEnabled(true)
-            .retry(Retry.builder()
+            .retry(RetryV1.builder()
                 .retryMode(RetryMode.BACKOFF)
                 .fixed(TaskSettings.DEFAULT.getRetry().getFixed())
                 .backoff(Backoff.builder()
@@ -212,7 +212,7 @@ class TaskConfigurationDiscoveryProcessorTest {
             .cron("* */10 * * *")
             .executionGuarantees(TaskSettings.ExecutionGuarantees.EXACTLY_ONCE)
             .dltEnabled(true)
-            .retry(Retry.builder()
+            .retry(RetryV1.builder()
                 .retryMode(RetryMode.BACKOFF)
                 .fixed(TaskSettings.DEFAULT.getRetry().getFixed())
                 .backoff(Backoff.builder()
@@ -244,7 +244,7 @@ class TaskConfigurationDiscoveryProcessorTest {
             .cron("*/4 * * * *")
             .executionGuarantees(TaskSettings.ExecutionGuarantees.EXACTLY_ONCE)
             .dltEnabled(true)
-            .retry(Retry.builder()
+            .retry(RetryV1.builder()
                 .retryMode(RetryMode.FIXED)
                 .fixed(Fixed.builder()
                     .delay(Duration.ofSeconds(10))

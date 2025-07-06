@@ -9,7 +9,7 @@ import java.util.Optional;
 
 @Value
 @Builder(toBuilder = true)
-public class Retry {
+public class RetryV1 {
     RetryMode retryMode;
     Fixed fixed;
     Backoff backoff;

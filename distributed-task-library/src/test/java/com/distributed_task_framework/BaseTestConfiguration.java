@@ -59,7 +59,7 @@ import com.distributed_task_framework.service.internal.WorkerContextManager;
 import com.distributed_task_framework.service.internal.WorkerManager;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.settings.Fixed;
-import com.distributed_task_framework.settings.Retry;
+import com.distributed_task_framework.settings.RetryV1;
 import com.distributed_task_framework.settings.RetryMode;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -281,7 +281,7 @@ public class BaseTestConfiguration {
                     .appToUrl(Map.of("foreign-app", new URL("http://foreign-app:8080")))
                     .build()
                 )
-                .retry(Retry.builder()
+                .retry(RetryV1.builder()
                     .retryMode(RetryMode.FIXED)
                     .fixed(Fixed.builder()
                         .delay(Duration.ofSeconds(1))

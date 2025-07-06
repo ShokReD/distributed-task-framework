@@ -7,7 +7,7 @@ import com.distributed_task_framework.model.TaskId;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.persistence.repository.entity.TestBusinessObjectEntity;
-import com.distributed_task_framework.settings.Retry;
+import com.distributed_task_framework.settings.RetryV1;
 import com.distributed_task_framework.settings.RetryMode;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.task.Task;
@@ -473,7 +473,7 @@ public abstract class AbstractLocalWorkerIntegrationTests extends BaseLocalWorke
         //when
         TaskDef<Void> taskDef = TaskDef.privateTaskDef("test-cron", Void.class);
         TaskSettings taskSettings = newRecurrentTaskSettings().toBuilder()
-            .retry(Retry.builder()
+            .retry(RetryV1.builder()
                 .retryMode(RetryMode.OFF)
                 .build())
             .build();

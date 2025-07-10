@@ -1,5 +1,8 @@
 package com.distributed_task_framework.settings;
 
+import lombok.Builder;
+import lombok.Value;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -11,23 +14,30 @@ import java.util.Optional;
  * <pre>nextRetry = failCount == 1 ? currentTime + initialDelay : currentTime + delayPeriod*2^(failCount-1)</pre>
  * where <pre>failCount = 1, 2, 3, ... nextRetry = Min(nextRetry, currentTime + maxDelay)</pre>
  */
-public final class BackoffRetry implements Retry {
+@Value
+@Builder
+public class BackoffRetry implements Retry {
+    public static final BackoffRetry DEFAULT = BackoffRetry.builder().build();
 
     /**
      * Initial delay of the first retry.
      */
+    @Builder.Default
     Duration initialDelay = Duration.ofSeconds(10);
     /**
      * The time interval that is the ratio of the exponential backoff formula (geometric progression)
      */
+    @Builder.Default
     Duration delayPeriod = Duration.ofSeconds(10);
     /**
      * Maximum number of times a tuple is retried before being acked and scheduled for commit.
      */
+    @Builder.Default
     int maxRetries = 32;
     /**
      * Maximum amount of time waiting before retrying.
      */
+    @Builder.Default
     Duration maxDelay = Duration.ofHours(1);
 
     // nextRetry = failCount == 1 ? currentTime + initialDelay : currentTime + delayPeriod*2^(failCount-1)

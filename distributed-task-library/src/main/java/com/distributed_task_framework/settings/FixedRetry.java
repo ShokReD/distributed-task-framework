@@ -1,31 +1,37 @@
 package com.distributed_task_framework.settings;
 
+import lombok.Builder;
+import lombok.Value;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-public final class FixedRetry implements Retry {
+/**
+ * Fixed interval retry policy.
+ */
+@Value
+@Builder(toBuilder = true)
+public class FixedRetry implements Retry {
+
+    public static final FixedRetry DEFAULT = FixedRetry.builder().build();
 
     /**
      * Delay between retires.
      */
-    private final Duration delay;
+    @Builder.Default
+    Duration delay = Duration.ofSeconds(10);
     /**
      * Max attempts
      */
-    private final Integer maxNumber;
+    @Builder.Default
+    Integer maxNumber = 6;
     /**
      * Max interval for retires.
      * Give up after whether max attempts is reached or interval is passed.
      */
-    private final Duration maxInterval;
-
-    public FixedRetry(Duration delay, Integer maxNumber, Duration maxInterval) {
-        this.delay = delay;
-        this.maxNumber = maxNumber;
-        this.maxInterval = maxInterval;
-    }
+    Duration maxInterval;
 
     @Override
     public Optional<LocalDateTime> next(int currentFails, Clock clock) {

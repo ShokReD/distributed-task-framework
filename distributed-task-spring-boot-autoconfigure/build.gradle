@@ -45,6 +45,9 @@ tasks.register('generateAdoc') {
         metadataInput = file("build/classes/java/main/META-INF/spring-configuration-metadata.json")
         outputFile = file("config-prop.md")
         markdownCustomization {
+//            contentCustomization {
+//                includeEnvFormat = true
+//            }
             unknownGroupLocalization = "distributed-task"
         }
     }

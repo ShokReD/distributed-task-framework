@@ -13,9 +13,9 @@ import java.util.Map;
 @Value
 @Builder(toBuilder = true)
 public class CommonSettings {
-    public static final RetryV1 DEFAULT_RETRY = cerateDefaultRetry();
+    public static final RetryV1 DEFAULT_RETRY = createDefaultRetry();
 
-    private static RetryV1 cerateDefaultRetry() {
+    private static RetryV1 createDefaultRetry() {
         return RetryV1.builder()
             .retryMode(RetryMode.BACKOFF)
             .fixed(Fixed.builder().build())

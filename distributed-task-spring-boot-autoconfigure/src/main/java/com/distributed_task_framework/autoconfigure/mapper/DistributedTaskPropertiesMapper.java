@@ -1,5 +1,6 @@
 package com.distributed_task_framework.autoconfigure.mapper;
 
+import com.distributed_task_framework.autoconfigure.DistributedTaskProperties;
 import com.distributed_task_framework.exception.TaskConfigurationException;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.settings.RetryV1;
@@ -7,13 +8,12 @@ import com.distributed_task_framework.settings.TaskSettings;
 import com.google.common.collect.ImmutableRangeMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
+import jakarta.annotation.Nullable;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
-import com.distributed_task_framework.autoconfigure.DistributedTaskProperties;
 
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -21,12 +21,6 @@ import java.util.Map;
 public interface DistributedTaskPropertiesMapper {
 
     TaskSettings map(DistributedTaskProperties.TaskProperties taskProperties);
-
-    default TaskSettings merge(@MappingTarget TaskSettings defaultTaskProperties, DistributedTaskProperties.TaskProperties taskProperties) {
-        DistributedTaskProperties.TaskProperties defaultTaskSettings = map(defaultTaskProperties);
-        DistributedTaskProperties.TaskProperties mergedTaskProperties = merge(defaultTaskSettings, taskProperties);
-        return map(mergedTaskProperties);
-    }
 
     DistributedTaskProperties.TaskProperties map(TaskSettings taskSettings);
 
@@ -36,28 +30,28 @@ public interface DistributedTaskPropertiesMapper {
             return commonSettings;
         }
         CommonSettings.RegistrySettings registrySettings = common.getRegistry() != null ?
-                merge(commonSettings.getRegistrySettings().toBuilder().build(), common.getRegistry()) :
-                commonSettings.getRegistrySettings();
+            merge(commonSettings.getRegistrySettings().toBuilder().build(), common.getRegistry()) :
+            commonSettings.getRegistrySettings();
         CommonSettings.PlannerSettings plannerSettings = common.getPlanner() != null ?
-                merge(commonSettings.getPlannerSettings(), common.getPlanner()) :
-                commonSettings.getPlannerSettings();
+            merge(commonSettings.getPlannerSettings(), common.getPlanner()) :
+            commonSettings.getPlannerSettings();
         CommonSettings.WorkerManagerSettings workerManagerSettings = common.getWorkerManager() != null ?
-                merge(commonSettings.getWorkerManagerSettings(), common.getWorkerManager()) :
-                commonSettings.getWorkerManagerSettings();
+            merge(commonSettings.getWorkerManagerSettings(), common.getWorkerManager()) :
+            commonSettings.getWorkerManagerSettings();
         //todo: test for these properties
         CommonSettings.StatSettings statSettings = common.getStatistics() != null ?
-                merge(commonSettings.getStatSettings(), common.getStatistics()) :
-                commonSettings.getStatSettings();
+            merge(commonSettings.getStatSettings(), common.getStatistics()) :
+            commonSettings.getStatSettings();
         CommonSettings.DeliveryManagerSettings deliveryManagerSettings = common.getDeliveryManager() != null ?
-                merge(commonSettings.getDeliveryManagerSettings(), common.getDeliveryManager()) :
-                commonSettings.getDeliveryManagerSettings();
+            merge(commonSettings.getDeliveryManagerSettings(), common.getDeliveryManager()) :
+            commonSettings.getDeliveryManagerSettings();
         return mergeInternal(commonSettings, common).toBuilder()
-                .registrySettings(registrySettings)
-                .plannerSettings(plannerSettings)
-                .workerManagerSettings(workerManagerSettings)
-                .statSettings(statSettings)
-                .deliveryManagerSettings(deliveryManagerSettings)
-                .build();
+            .registrySettings(registrySettings)
+            .plannerSettings(plannerSettings)
+            .workerManagerSettings(workerManagerSettings)
+            .statSettings(statSettings)
+            .deliveryManagerSettings(deliveryManagerSettings)
+            .build();
     }
 
     default CommonSettings.StatSettings merge(@MappingTarget CommonSettings.StatSettings defaultStatistics,
@@ -107,28 +101,28 @@ public interface DistributedTaskPropertiesMapper {
         if (!deliveryManager.getManageDelay().isEmpty()) {
             ImmutableRangeMap<Integer, Integer> polingDelay = mapRangeDelayProperty(deliveryManager.getManageDelay());
             mergedManagerSettings = mergedManagerSettings.toBuilder()
-                    .manageDelay(polingDelay)
-                    .build();
+                .manageDelay(polingDelay)
+                .build();
         }
         mergedManagerSettings = mergedManagerSettings.toBuilder()
-                .retry(merge(deliveryManagerSettings.getRetry(), deliveryManager.getRetry()))
-                .build();
+            .retry(merge(deliveryManagerSettings.getRetry(), deliveryManager.getRetry()))
+            .build();
         return mergedManagerSettings;
     }
 
     default RetryV1 merge(@MappingTarget RetryV1 defaultRetrySettings, DistributedTaskProperties.Retry retry) {
         if (retry == null) {
             return defaultRetrySettings.toBuilder()
-                    .build();
+                .build();
         }
         DistributedTaskProperties.Retry defaultRetryProperties = map(defaultRetrySettings);
         defaultRetryProperties = mergeInternal(defaultRetryProperties, retry);
         var defaultFixed = defaultRetryProperties.getFixed() != null ?
-                defaultRetryProperties.getFixed() :
-                DistributedTaskProperties.Fixed.builder().build();
+            defaultRetryProperties.getFixed() :
+            DistributedTaskProperties.Fixed.builder().build();
         var defaultBackoff = defaultRetryProperties.getBackoff() != null ?
-                defaultRetryProperties.getBackoff() :
-                DistributedTaskProperties.Backoff.builder().build();
+            defaultRetryProperties.getBackoff() :
+            DistributedTaskProperties.Backoff.builder().build();
 
         if (retry.getFixed() != null) {
             defaultFixed = merge(defaultFixed, retry.getFixed());
@@ -137,9 +131,9 @@ public interface DistributedTaskPropertiesMapper {
             defaultBackoff = merge(defaultBackoff, retry.getBackoff());
         }
         defaultRetryProperties = defaultRetryProperties.toBuilder()
-                .fixed(defaultFixed)
-                .backoff(defaultBackoff)
-                .build();
+            .fixed(defaultFixed)
+            .backoff(defaultBackoff)
+            .build();
         return map(defaultRetryProperties);
     }
 
@@ -166,10 +160,10 @@ public interface DistributedTaskPropertiesMapper {
         var deliveryManager = mapInternal(deliveryManagerSettings);
         Map<Integer, Integer> manageDelay = Maps.newHashMap();
         deliveryManagerSettings.getManageDelay().asMapOfRanges()
-                .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
+            .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
         return deliveryManager.toBuilder()
-                .manageDelay(manageDelay)
-                .build();
+            .manageDelay(manageDelay)
+            .build();
     }
 
     @Mapping(target = "manageDelay", ignore = true)
@@ -189,8 +183,8 @@ public interface DistributedTaskPropertiesMapper {
         if (!workerManager.getManageDelay().isEmpty()) {
             ImmutableRangeMap<Integer, Integer> manageDelay = mapRangeDelayProperty(workerManager.getManageDelay());
             mergedManagerSettings = mergedManagerSettings.toBuilder()
-                    .manageDelay(manageDelay)
-                    .build();
+                .manageDelay(manageDelay)
+                .build();
         }
         return mergedManagerSettings;
     }
@@ -215,10 +209,10 @@ public interface DistributedTaskPropertiesMapper {
         var workerManager = mapInternal(workerManagerSettings);
         Map<Integer, Integer> manageDelay = Maps.newHashMap();
         workerManagerSettings.getManageDelay().asMapOfRanges()
-                .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
+            .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
         return workerManager.toBuilder()
-                .manageDelay(manageDelay)
-                .build();
+            .manageDelay(manageDelay)
+            .build();
     }
 
     @Mapping(target = "manageDelay", ignore = true)
@@ -257,8 +251,8 @@ public interface DistributedTaskPropertiesMapper {
      */
     default ImmutableRangeMap<Integer, Integer> mapRangeDelayProperty(Map<Integer, Integer> rangeDelay) {
         List<Integer> orderedNumbers = rangeDelay.keySet().stream()
-                .sorted()
-                .toList();
+            .sorted()
+            .toList();
         var rangeMapBuilder = ImmutableRangeMap.<Integer, Integer>builder();
         int lastNumber = -1;
         for (int number : orderedNumbers) {
@@ -277,12 +271,11 @@ public interface DistributedTaskPropertiesMapper {
     default DistributedTaskProperties.Planner map(CommonSettings.PlannerSettings defaultPlannerSettings) {
         DistributedTaskProperties.Planner result = mapInternal(defaultPlannerSettings);
         Map<Integer, Integer> pollingDelay = Maps.newHashMap();
-        defaultPlannerSettings.getPollingDelay().asMapOfRanges().forEach((range, limit) -> {
-            pollingDelay.put(range.upperEndpoint(), limit);
-        });
+        defaultPlannerSettings.getPollingDelay().asMapOfRanges()
+            .forEach((range, limit) -> pollingDelay.put(range.upperEndpoint(), limit));
         return result.toBuilder()
-                .pollingDelay(pollingDelay)
-                .build();
+            .pollingDelay(pollingDelay)
+            .build();
     }
 
     @Mapping(target = "pollingDelay", ignore = true)
@@ -304,14 +297,14 @@ public interface DistributedTaskPropertiesMapper {
     default DistributedTaskProperties.TaskProperties merge(@MappingTarget DistributedTaskProperties.TaskProperties defaultSettings,
                                                            DistributedTaskProperties.TaskProperties taskProperties) {
         DistributedTaskProperties.Retry defaultRetry = defaultSettings.getRetry() != null ? defaultSettings.getRetry() :
-                DistributedTaskProperties.Retry.builder().build();
+            DistributedTaskProperties.Retry.builder().build();
         DistributedTaskProperties.Backoff defaultBackoff = defaultSettings.getRetry() != null && defaultSettings.getRetry().getBackoff() != null ?
-                defaultSettings.getRetry().getBackoff().toBuilder().build() :
-                DistributedTaskProperties.Backoff.builder().build();
+            defaultSettings.getRetry().getBackoff().toBuilder().build() :
+            DistributedTaskProperties.Backoff.builder().build();
 
         DistributedTaskProperties.Fixed defaultFixed = defaultSettings.getRetry() != null && defaultSettings.getRetry().getFixed() != null ?
-                defaultSettings.getRetry().getFixed().toBuilder().build() :
-                DistributedTaskProperties.Fixed.builder().build();
+            defaultSettings.getRetry().getFixed().toBuilder().build() :
+            DistributedTaskProperties.Fixed.builder().build();
 
         var result = mergeInternal(defaultSettings, taskProperties);
         if (taskProperties.getRetry() != null) {
@@ -324,11 +317,11 @@ public interface DistributedTaskPropertiesMapper {
             defaultFixed = merge(defaultFixed, taskProperties.getRetry().getFixed());
         }
         return result.toBuilder()
-                .retry(defaultRetry.toBuilder()
-                        .backoff(defaultBackoff)
-                        .fixed(defaultFixed)
-                        .build())
-                .build();
+            .retry(defaultRetry.toBuilder()
+                .backoff(defaultBackoff)
+                .fixed(defaultFixed)
+                .build())
+            .build();
     }
 
     @Mapping(target = "retry", ignore = true)

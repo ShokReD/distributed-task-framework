@@ -3,17 +3,16 @@ package com.distributed_task_framework.persistence.repository.jdbc;
 import com.distributed_task_framework.model.AggregatedTaskStat;
 import com.distributed_task_framework.persistence.repository.TaskStatRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.SqlParameters;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
 import java.sql.Types;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static com.distributed_task_framework.persistence.repository.DtfRepositoryConstants.DTF_JDBC_OPS;
@@ -50,9 +49,7 @@ public class TaskStatRepositoryImpl implements TaskStatRepository {
     public List<AggregatedTaskStat> getAggregatedTaskStat(Set<String> knownTaskNames) {
         return dtfNamedParameterJdbcTemplate.query(
                 SELECT_AGGREGATED_TASK_STAT,
-                SqlParameters.of(
-                    "knownTaskNames", JdbcTools.toArray(knownTaskNames), Types.ARRAY
-                ),
+                new MapSqlParameterSource().addValue("knownTaskNames", JdbcTools.toArray(knownTaskNames), Types.ARRAY),
                 AGGREGATED_TASK_STAT_ROW_MAPPER
             )
             .stream().toList();

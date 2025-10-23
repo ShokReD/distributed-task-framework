@@ -5,13 +5,13 @@ import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskWorkerRepository;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.SqlParameters;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
 import java.sql.Types;
@@ -54,11 +54,10 @@ public class TaskWorkerRepositoryImpl implements TaskWorkerRepository {
     public Collection<TaskEntity> getNextTasks(UUID workerId, Set<TaskId> skippedTasks, int maxSize) {
         return namedParameterJdbcTemplate.query(
             SELECT_NEXT_ASSIGNED_TASKS,
-            SqlParameters.of(
-                "workerId", JdbcTools.asNullableString(workerId), Types.VARCHAR,
-                "skippedTasks", JdbcTools.UUIDsToStringArray(taskIdsToUuds(skippedTasks)), Types.ARRAY,
-                "maxSize", maxSize, Types.BIGINT
-            ),
+            new MapSqlParameterSource()
+                .addValue("workerId", JdbcTools.asNullableString(workerId), Types.VARCHAR)
+                .addValue("skippedTasks", JdbcTools.UUIDsToStringArray(taskIdsToUuds(skippedTasks)), Types.ARRAY)
+                .addValue("maxSize", maxSize, Types.BIGINT),
             new BeanPropertyRowMapper<>(TaskEntity.class)
         ).stream().toList();
     }
@@ -83,7 +82,7 @@ public class TaskWorkerRepositoryImpl implements TaskWorkerRepository {
     public Set<TaskId> filterCanceled(Set<TaskId> taskIds) {
         return new HashSet<>(namedParameterJdbcTemplate.query(
             FILTER_CANCELED,
-            SqlParameters.of("ids", JdbcTools.UUIDsToStringArray(taskIdsToUuds(taskIds)), Types.ARRAY),
+            new MapSqlParameterSource().addValue("ids", JdbcTools.UUIDsToStringArray(taskIdsToUuds(taskIds)), Types.ARRAY),
             TASK_ID_ROW_MAPPER_PROVIDER.apply(commonSettings)
         ));
     }

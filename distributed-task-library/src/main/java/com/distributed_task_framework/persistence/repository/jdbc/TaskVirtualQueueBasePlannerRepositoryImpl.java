@@ -6,7 +6,6 @@ import com.distributed_task_framework.model.PartitionStat;
 import com.distributed_task_framework.persistence.entity.ShortTaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskVirtualQueueBasePlannerRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.SqlParameters;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
@@ -14,6 +13,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
 import java.sql.Types;
@@ -63,10 +63,9 @@ public class TaskVirtualQueueBasePlannerRepositoryImpl implements TaskVirtualQue
     public List<NodeTaskActivity> currentAssignedTaskStat(Set<UUID> knownNodes, Set<String> knownTaskNames) {
         return namedParameterJdbcTemplate.query(
                 SELECT_CURRENT_ASSIGNED_TASK_STAT,
-                SqlParameters.of(
-                    "knownTaskNames", JdbcTools.toArray(knownTaskNames), Types.ARRAY,
-                    "knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY
-                ),
+                new MapSqlParameterSource()
+                    .addValue("knownTaskNames", JdbcTools.toArray(knownTaskNames), Types.ARRAY)
+                    .addValue("knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY),
                 NODE_TASK_ACTIVITY_ROW_MAPPER
             )
             .stream().toList();
@@ -147,11 +146,10 @@ public class TaskVirtualQueueBasePlannerRepositoryImpl implements TaskVirtualQue
 
         return Sets.newHashSet(namedParameterJdbcTemplate.query(
                 query,
-                SqlParameters.of(
-                    "knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY,
-                    "executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP,
-                    "limit", limit, Types.BIGINT
-                ),
+                new MapSqlParameterSource()
+                    .addValue("knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY)
+                    .addValue("executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP)
+                    .addValue("limit", limit, Types.BIGINT),
                 TASK_NAME_AFFINITY_GROUP_STAT_MAPPER
             )
         );
@@ -230,10 +228,9 @@ public class TaskVirtualQueueBasePlannerRepositoryImpl implements TaskVirtualQue
 
         return Sets.newHashSet(namedParameterJdbcTemplate.query(
                 query,
-                SqlParameters.of(
-                    "knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY,
-                    "executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP
-                ),
+                new MapSqlParameterSource()
+                    .addValue("knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY)
+                    .addValue("executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP),
                 SHORT_TASK_ROW_MAPPER
             )
         );

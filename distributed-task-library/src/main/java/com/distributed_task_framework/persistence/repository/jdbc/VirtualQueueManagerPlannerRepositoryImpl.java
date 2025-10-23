@@ -9,7 +9,6 @@ import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.persistence.repository.VirtualQueueManagerPlannerRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.SqlParameters;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
@@ -17,6 +16,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
 import java.sql.Types;
@@ -77,10 +77,9 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
     public Set<AffinityGroupWrapper> affinityGroupsInNewVirtualQueue(LocalDateTime from, Duration overlap) {
         return Sets.newHashSet(namedParameterJdbcTemplate.query(
                 SELECT_AFFINITY_GROUPS_IN_VIRTUAL_QUEUE,
-                SqlParameters.of(
-                    "from", from, Types.TIMESTAMP,
-                    "timeOverlapSec", overlap.getSeconds(), Types.BIGINT
-                ),
+                new MapSqlParameterSource()
+                    .addValue("from", from, Types.TIMESTAMP)
+                    .addValue("timeOverlapSec", overlap.getSeconds(), Types.BIGINT),
                 AFFINITY_GROUP_WRAPPER_BEAN_PROPERTY_ROW_MAPPER
             )
         );
@@ -143,7 +142,7 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
 
         return Sets.newHashSet(namedParameterJdbcTemplate.query(
                 query,
-                SqlParameters.of("limit", affinityGroupLimit, Types.BIGINT),
+                new MapSqlParameterSource().addValue("limit", affinityGroupLimit, Types.BIGINT),
                 AFFINITY_GROUP_STAT_MAPPER
             )
         );
@@ -385,10 +384,9 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
         List<Long> versions = idVersionEntities.stream().map(IdVersionEntity::getVersion).toList();
         return Lists.newArrayList(namedParameterJdbcTemplate.query(
                 MOVE_PARKED_TO_READY,
-                SqlParameters.of(
-                    IdVersionEntity.Fields.id, JdbcTools.UUIDsToStringArray(ids), Types.ARRAY,
-                    IdVersionEntity.Fields.version, JdbcTools.toLongArray(versions), Types.ARRAY
-                ),
+                new MapSqlParameterSource()
+                    .addValue(IdVersionEntity.Fields.id, JdbcTools.UUIDsToStringArray(ids), Types.ARRAY)
+                    .addValue(IdVersionEntity.Fields.version, JdbcTools.toLongArray(versions), Types.ARRAY),
                 SHORT_TASK_ROW_MAPPER
             )
         );
@@ -407,7 +405,7 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
     public Set<IdVersionEntity> readyToHardDelete(int batchSize) {
         return Sets.newHashSet(namedParameterJdbcTemplate.query(
                 READY_TO_HARD_DELETE,
-                SqlParameters.of("limit", batchSize, Types.BIGINT),
+                new MapSqlParameterSource().addValue("limit", batchSize, Types.BIGINT),
                 IdVersionEntity.ID_VERSION_ROW_MAPPER
             )
         );
@@ -424,7 +422,7 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
     public int countOfTasksInVirtualQueue(VirtualQueue virtualQueue) {
         return namedParameterJdbcTemplate.queryForObject(
             COUNT_BY_VIRTUAL_QUEUE,
-            SqlParameters.of("virtualQueue", JdbcTools.asString(virtualQueue), Types.VARCHAR),
+            new MapSqlParameterSource().addValue("virtualQueue", JdbcTools.asString(virtualQueue), Types.VARCHAR),
             Integer.class
         );
     }
@@ -447,10 +445,9 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
     public void softDelete(TaskEntity taskEntity) {
         int updatedRows = namedParameterJdbcTemplate.update(
             SOFT_DELETE,
-            SqlParameters.of(
-                TaskEntity.Fields.id, JdbcTools.asNullableString(taskEntity.getId()), Types.VARCHAR,
-                TaskEntity.Fields.version, taskEntity.getVersion(), Types.BIGINT
-            )
+            new MapSqlParameterSource()
+                .addValue(TaskEntity.Fields.id, JdbcTools.asNullableString(taskEntity.getId()), Types.VARCHAR)
+                .addValue(TaskEntity.Fields.version, taskEntity.getVersion(), Types.BIGINT)
         );
         if (updatedRows == 0) {
             throw new OptimisticLockException(format("Can't update=[%s]", taskEntity), TaskEntity.class);

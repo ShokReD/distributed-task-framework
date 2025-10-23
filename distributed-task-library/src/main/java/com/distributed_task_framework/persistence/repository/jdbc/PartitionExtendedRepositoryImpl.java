@@ -3,7 +3,6 @@ package com.distributed_task_framework.persistence.repository.jdbc;
 import com.distributed_task_framework.persistence.entity.PartitionEntity;
 import com.distributed_task_framework.persistence.repository.PartitionExtendedRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.SqlParameters;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
@@ -105,11 +104,10 @@ public class PartitionExtendedRepositoryImpl implements PartitionExtendedReposit
         List<Long> timeBuckets = entities.stream().map(PartitionEntity::getTimeBucket).toList();
         return namedParameterJdbcTemplate.query(
             FILTER_EXISTED,
-            SqlParameters.of(
-                PartitionEntity.Fields.affinityGroup, JdbcTools.toArray(affinityGroups), Types.ARRAY,
-                PartitionEntity.Fields.taskName, JdbcTools.toArray(taskNames), Types.ARRAY,
-                PartitionEntity.Fields.timeBucket, JdbcTools.toLongArray(timeBuckets), Types.ARRAY
-            ),
+            new MapSqlParameterSource()
+                .addValue(PartitionEntity.Fields.affinityGroup, JdbcTools.toArray(affinityGroups), Types.ARRAY)
+                .addValue(PartitionEntity.Fields.taskName, JdbcTools.toArray(taskNames), Types.ARRAY)
+                .addValue(PartitionEntity.Fields.timeBucket, JdbcTools.toLongArray(timeBuckets), Types.ARRAY),
             PartitionEntity.PARTITION_ROW_MAPPER
         );
     }
@@ -125,7 +123,7 @@ public class PartitionExtendedRepositoryImpl implements PartitionExtendedReposit
     public Collection<PartitionEntity> findAllBeforeOrIn(Long maxTimeBucket) {
         return namedParameterJdbcTemplate.query(
             SELECT_ALL_BEFORE_TIME_WINDOW,
-            SqlParameters.of("maxTimeBucket", maxTimeBucket, Types.BIGINT),
+            new MapSqlParameterSource().addValue("maxTimeBucket", maxTimeBucket, Types.BIGINT),
             PartitionEntity.PARTITION_ROW_MAPPER
         );
     }
@@ -148,7 +146,7 @@ public class PartitionExtendedRepositoryImpl implements PartitionExtendedReposit
     public void compactInTimeWindow(Long timeBucket) {
         namedParameterJdbcTemplate.update(
             COMPACT_IN_TIME_BUCKET,
-            SqlParameters.of(PartitionEntity.Fields.timeBucket, timeBucket, Types.BIGINT)
+            new MapSqlParameterSource().addValue(PartitionEntity.Fields.timeBucket, timeBucket, Types.BIGINT)
         );
     }
 
@@ -164,9 +162,7 @@ public class PartitionExtendedRepositoryImpl implements PartitionExtendedReposit
             .toList();
         namedParameterJdbcTemplate.update(
             DELETE_BY_IDS,
-            SqlParameters.of(
-                "ids", JdbcTools.UUIDsToStringArray(ids), Types.ARRAY
-            )
+            new MapSqlParameterSource().addValue("ids", JdbcTools.UUIDsToStringArray(ids), Types.ARRAY)
         );
     }
 }

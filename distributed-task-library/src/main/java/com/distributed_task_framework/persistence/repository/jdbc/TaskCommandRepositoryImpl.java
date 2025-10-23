@@ -6,13 +6,13 @@ import com.distributed_task_framework.exception.UnknownTaskException;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskCommandRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.SqlParameters;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
 import java.sql.Types;
@@ -102,7 +102,7 @@ public class TaskCommandRepositoryImpl implements TaskCommandRepository {
     private List<UUID> filerExisted(List<UUID> taskIds) {
         return namedParameterJdbcTemplate.queryForList(
             FILTER_EXISTED,
-            SqlParameters.of("taskIds", JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY),
+            new MapSqlParameterSource().addValue("taskIds", JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY),
             UUID.class
         );
     }

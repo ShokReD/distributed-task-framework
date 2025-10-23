@@ -7,7 +7,6 @@ import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskExtendedRepository;
 import com.distributed_task_framework.utils.ComparatorUtils;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.SqlParameters;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -147,7 +146,7 @@ public class TaskExtendedRepositoryImpl implements TaskExtendedRepository {
     public Optional<TaskEntity> find(UUID taskId) {
         return namedParameterJdbcTemplate.query(
             FIND_BY_PRIMARY_KEY,
-            SqlParameters.of(TaskEntity.Fields.id, JdbcTools.asNullableString(taskId), Types.VARCHAR),
+            new MapSqlParameterSource().addValue(TaskEntity.Fields.id, JdbcTools.asNullableString(taskId), Types.VARCHAR),
             TaskEntity.TASK_ROW_MAPPER
         ).stream().findAny();
     }
@@ -195,7 +194,7 @@ public class TaskExtendedRepositoryImpl implements TaskExtendedRepository {
     public Collection<TaskEntity> findAllByTaskName(String taskName) {
         return namedParameterJdbcTemplate.query(
             SELECT_ALL_BY_TASK_NAME,
-            SqlParameters.of(TaskEntity.Fields.taskName, taskName, Types.VARCHAR),
+            new MapSqlParameterSource().addValue(TaskEntity.Fields.taskName, taskName, Types.VARCHAR),
             TaskEntity.TASK_ROW_MAPPER
         ).stream().toList();
     }
@@ -215,10 +214,9 @@ public class TaskExtendedRepositoryImpl implements TaskExtendedRepository {
     public Collection<TaskEntity> findByName(String taskName, long batchSize) {
         return namedParameterJdbcTemplate.query(
             SELECT_BY_NAME,
-            SqlParameters.of(
-                TaskEntity.Fields.taskName, taskName, Types.VARCHAR,
-                "batchSize", batchSize, Types.BIGINT
-            ),
+            new MapSqlParameterSource()
+                .addValue(TaskEntity.Fields.taskName, taskName, Types.VARCHAR)
+                .addValue("batchSize", batchSize, Types.BIGINT),
             TaskEntity.TASK_ROW_MAPPER
         ).stream().toList();
     }
@@ -235,7 +233,8 @@ public class TaskExtendedRepositoryImpl implements TaskExtendedRepository {
     public List<TaskEntity> findAll(Collection<UUID> taskIds) {
         return namedParameterJdbcTemplate.query(
             SELECT_BY_IDS,
-            SqlParameters.of("ids", JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY),
+            new MapSqlParameterSource()
+                .addValue("ids", JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY),
             TaskEntity.TASK_ROW_MAPPER
         ).stream().toList();
     }
@@ -264,10 +263,9 @@ public class TaskExtendedRepositoryImpl implements TaskExtendedRepository {
         var taskVersions = taskIdVersions.stream().map(IdVersionEntity::getVersion).toList();
         return Sets.newHashSet(namedParameterJdbcTemplate.query(
                 DELETE_BY_IDS_VERSIONS,
-                SqlParameters.of(
-                    TaskEntity.Fields.id, JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY,
-                    TaskEntity.Fields.version, JdbcTools.toLongArray(taskVersions), Types.ARRAY
-                ),
+                new MapSqlParameterSource()
+                    .addValue(TaskEntity.Fields.id, JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY)
+                    .addValue(TaskEntity.Fields.version, JdbcTools.toLongArray(taskVersions), Types.ARRAY),
                 IdVersionEntity.ID_VERSION_ROW_MAPPER
             )
         );

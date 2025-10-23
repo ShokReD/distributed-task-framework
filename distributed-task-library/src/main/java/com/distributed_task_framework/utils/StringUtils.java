@@ -6,7 +6,7 @@ import lombok.experimental.UtilityClass;
 public class StringUtils {
 
     public String requireNotBlank(String value, String name) {
-        if (org.apache.commons.lang3.StringUtils.isBlank(value)) {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(name + " must not be empty string");
         }
         return value;

@@ -7,7 +7,6 @@ import com.distributed_task_framework.service.DistributedTaskService;
 import com.distributed_task_framework.test_service.tasks.BaseTask;
 import com.distributed_task_framework.test_service.tasks.mapreduce.dto.MapDto;
 import com.distributed_task_framework.test_service.tasks.mapreduce.dto.MapReduceDto;
-import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -47,34 +46,53 @@ public class MapReduceParentTask extends BaseTask<MapReduceDto> {
     @Override
     public void execute(ExecutionContext<MapReduceDto> executionContext) throws Exception {
         final MapReduceDto mrDto = executionContext.getInputMessageOpt()
-                .orElseGet(() -> new MapReduceDto("default", DEFAULT_MAP_TASKS));
+            .orElseGet(() -> new MapReduceDto("default", DEFAULT_MAP_TASKS));
 
         // Split text onto partitions depending on desired number of tasks.
         final List<String> words = toWords(mrDto.text());
-        final List<List<String>> partitions = Lists.partition(words, mrDto.tasks()); // guava library
+        final List<List<String>> partitions = chunked(words, mrDto.tasks());
         final List<TaskId> tasksToJoin = new ArrayList<>(partitions.size());
         for (List<String> partition : partitions) {
             // Schedule map tasks and keep taskIds to use for join task.
             final TaskId taskId = distributedTaskService.schedule(
-                    MAP_TASK,
-                    executionContext.withNewMessage(new MapDto(partition)));
+                MAP_TASK,
+                executionContext.withNewMessage(new MapDto(partition)));
 
             tasksToJoin.add(taskId);
         }
 
         // Wait for all map tasks to be completed.
         distributedTaskService.scheduleJoin(
-                REDUCE_TASK,
-                executionContext.withEmptyMessage(),
-                tasksToJoin);
+            REDUCE_TASK,
+            executionContext.withEmptyMessage(),
+            tasksToJoin);
     }
 
     private List<String> toWords(String text) {
         return Arrays.stream(text.split("\n"))
-                .map(line -> line.toLowerCase().replaceAll("\\p{Punct}", " "))
-                .flatMap(line -> Arrays.stream(line.split(" ")))
-                .map(String::strip)
-                .filter(w -> !w.isBlank())
-                .toList();
+            .map(line -> line.toLowerCase().replaceAll("\\p{Punct}", " "))
+            .flatMap(line -> Arrays.stream(line.split(" ")))
+            .map(String::strip)
+            .filter(w -> !w.isBlank())
+            .toList();
+    }
+
+    private <T> List<List<T>> chunked(List<T> source, int chunkSize) {
+        var safeChunkSize = chunkSize > 0 ? chunkSize : 1;
+        return source.stream()
+            .reduce(new ArrayList<>(), (lists, t) -> {
+                    if (lists.size() >= safeChunkSize) {
+                        lists.add(new ArrayList<>(safeChunkSize) {{
+                            add(t);
+                        }});
+                    } else {
+                        lists.get(lists.size() - 1).add(t);
+                    }
+                    return lists;
+                },
+                (l1, l2) -> {
+                    l1.addAll(l2);
+                    return l1;
+                });
     }
 }

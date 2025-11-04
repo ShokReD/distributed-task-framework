@@ -22,7 +22,6 @@ configure(subprojects) { project ->
         mapstructVersion = '1.5.5.Final'
         lombokMapstructBindingVersion = '0.2.0'
         springDataJdbcVersion = '3.1.2'
-        guavaVersion = '31.0.1-jre'
         testcontainersVersion = '1.19.6'
         cronUtilsVersion = '9.1.6'
         caffeineVersion = '3.0.5'
@@ -52,7 +51,6 @@ configure(subprojects) { project ->
 
         implementation "org.mapstruct:mapstruct:${mapstructVersion}"
         implementation 'com.fasterxml.jackson.core:jackson-databind'
-        implementation "com.google.guava:guava:${guavaVersion}"
 
         annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
         annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"

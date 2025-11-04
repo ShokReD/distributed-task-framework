@@ -19,12 +19,12 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -114,7 +114,7 @@ public class ExtendedTaskGenerator {
     }
 
     private <T> TaskDef<T> createTaskDef(TestTaskModelSpec<T> baseTaskDef) {
-        return baseTaskDef.getTaskDef() != null ? baseTaskDef.getTaskDef() : TaskDef.privateTaskDef("test-" + RandomStringUtils.random(10), baseTaskDef.getInputType());
+        return baseTaskDef.getTaskDef() != null ? baseTaskDef.getTaskDef() : TaskDef.privateTaskDef("test-" + randomString(10), baseTaskDef.getInputType());
     }
 
     private <T> TaskSettings createTaskSettings(TestTaskModelSpec<T> testTaskModelSpec) {
@@ -147,5 +147,20 @@ public class ExtendedTaskGenerator {
             testTaskModelSpec.getTaskEntityCustomizer().apply(taskEntity) :
             taskEntity;
         return taskRepository.saveOrUpdate(taskEntity);
+    }
+
+    private static String randomString(int length) {
+        if (length <= 0) {
+            return "";
+        }
+        return ThreadLocalRandom.current()
+            .ints(length, 'A', 'z')
+            .boxed()
+            .reduce(
+                new StringBuilder(),
+                (sb, i) -> sb.append((char) (int) i),
+                StringBuilder::append
+            )
+            .toString();
     }
 }

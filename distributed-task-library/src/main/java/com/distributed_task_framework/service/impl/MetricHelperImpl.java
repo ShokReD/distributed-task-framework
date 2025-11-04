@@ -1,5 +1,9 @@
 package com.distributed_task_framework.service.impl;
 
+import com.distributed_task_framework.persistence.entity.TaskEntity;
+import com.distributed_task_framework.persistence.entity.VirtualQueue;
+import com.distributed_task_framework.service.internal.MetricHelper;
+import com.distributed_task_framework.utils.StringUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import io.micrometer.core.instrument.Counter;
@@ -7,15 +11,11 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
+import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.apache.commons.lang3.StringUtils;
-import com.distributed_task_framework.persistence.entity.TaskEntity;
-import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.distributed_task_framework.service.internal.MetricHelper;
 
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -57,19 +57,19 @@ public class MetricHelperImpl implements MetricHelper {
     @Override
     public Timer timer(List<String> pathsName, List<Tag> tags) {
         return Timer.builder(buildName(pathsName.toArray(String[]::new)))
-                .tags(tags)
-                .publishPercentiles(0.5, 0.75, 0.95, 0.999)
-                .publishPercentileHistogram()
-                .register(meterRegistry);
+            .tags(tags)
+            .publishPercentiles(0.5, 0.75, 0.95, 0.999)
+            .publishPercentileHistogram()
+            .register(meterRegistry);
     }
 
     @Override
     public Timer timer(List<String> pathsName, List<Tag> tags, TaskEntity taskEntity) {
         List<Tag> allTags = ImmutableList.<Tag>builder()
-                .addAll(tags)
-                .add(buildAffinityGroupTag(taskEntity.getAffinityGroup()))
-                .add(Tag.of("task_name", taskEntity.getTaskName()))
-                .build();
+            .addAll(tags)
+            .add(buildAffinityGroupTag(taskEntity.getAffinityGroup()))
+            .add(Tag.of("task_name", taskEntity.getTaskName()))
+            .build();
         return timer(pathsName, allTags);
     }
 
@@ -81,17 +81,17 @@ public class MetricHelperImpl implements MetricHelper {
     @Override
     public Counter counter(List<String> pathsName, List<Tag> tags) {
         return Counter.builder(buildName(pathsName))
-                .tags(tags)
-                .register(meterRegistry);
+            .tags(tags)
+            .register(meterRegistry);
     }
 
     @Override
     public Counter counter(List<String> pathsName, List<Tag> tags, TaskEntity taskEntity) {
         List<Tag> allTags = ImmutableList.<Tag>builder()
-                .addAll(tags)
-                .add(buildAffinityGroupTag(taskEntity.getAffinityGroup()))
-                .add(Tag.of("task_name", taskEntity.getTaskName()))
-                .build();
+            .addAll(tags)
+            .add(buildAffinityGroupTag(taskEntity.getAffinityGroup()))
+            .add(Tag.of("task_name", taskEntity.getTaskName()))
+            .build();
         return counter(pathsName, allTags);
     }
 
@@ -103,8 +103,8 @@ public class MetricHelperImpl implements MetricHelper {
     @Override
     public Gauge gauge(List<String> pathsName, List<Tag> tags, Supplier<Number> supplier) {
         return Gauge.builder(buildName(pathsName), supplier)
-                .tags(tags)
-                .register(meterRegistry);
+            .tags(tags)
+            .register(meterRegistry);
     }
 
     private String buildName(List<String> pathNames) {

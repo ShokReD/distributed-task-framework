@@ -5,10 +5,10 @@ import com.distributed_task_framework.persistence.entity.NodeStateEntity;
 import com.distributed_task_framework.persistence.repository.NodeStateExtendedRepository;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,7 +38,7 @@ public class NodeStateExtendedRepositoryImpl implements NodeStateExtendedReposit
     public Map<NodeStateEntity, List<CapabilityEntity>> getAllWithCapabilities() {
         return jdbcTemplate.query(
                 GET_ALL_WITH_CAPABILITIES,
-                (rs, rowNum) -> Pair.of(
+                (rs, rowNum) -> new AbstractMap.SimpleEntry<>(
                     NodeStateEntity.NODE_STATE_ENTITY_BEAN_PROPERTY_ROW_MAPPER.mapRow(rs, rowNum),
                     (rs.getString(CapabilityEntity.Fields.id) != null) ?
                         CapabilityEntity.CAPABILITY_ENTITY_BEAN_PROPERTY_ROW_MAPPER.mapRow(rs, rowNum) :
@@ -46,9 +46,9 @@ public class NodeStateExtendedRepositoryImpl implements NodeStateExtendedReposit
                 )
             ).stream()
             .collect(Collectors.groupingBy(
-                Pair::getKey,
+                Map.Entry::getKey,
                 Collectors.mapping(
-                    Pair::getValue,
+                    Map.Entry::getValue,
                     Collectors.toList()
                 )
             ));

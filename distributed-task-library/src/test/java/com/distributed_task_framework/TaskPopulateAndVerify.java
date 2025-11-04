@@ -13,7 +13,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldDefaults;
-import org.apache.commons.lang3.tuple.Pair;
 import org.assertj.core.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,7 +20,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -362,7 +364,7 @@ public class TaskPopulateAndVerify {
     }
 
     public List<PopulationSpec> makePopulationSpec(ImmutableMap<Range<Integer>, GenerationSpec> generateSpecs) {
-        List<PopulationSpec> result = Lists.newArrayList();
+        List<PopulationSpec> result = new ArrayList<>();
         for (var entity : generateSpecs.entrySet()) {
             int fromInclude = entity.getKey().lowerEndpoint();
             int toExclude = entity.getKey().upperEndpoint();
@@ -497,12 +499,13 @@ public class TaskPopulateAndVerify {
     }
 
     public Map<VirtualQueue, List<TaskEntity>> verifyVirtualQueue(VerifyVirtualQueueContext ctx) {
-        Map<VirtualQueue, List<TaskEntity>> groupedTasks = Maps.newHashMap();
+        var groupedTasks = new HashMap<VirtualQueue, List<TaskEntity>>();
         int fromPopulationSpecInclude = ctx.getPopulationSpecRange().lowerEndpoint();
         int toPopulationSpecExclude = ctx.getPopulationSpecRange().upperEndpoint();
-        Set<Pair<String, String>> testedAffinityGroupAndAffinity =
+        Set<Map.Entry<String, String>> testedAffinityGroupAndAffinity =
             ctx.getPopulationSpecs().subList(fromPopulationSpecInclude, toPopulationSpecExclude).stream()
-                .map(spec -> Pair.of(spec.getAffinityGroup(), spec.getAffinity()))
+                .map(spec -> new AbstractMap.SimpleEntry<>(spec.getAffinityGroup(), spec.getAffinity()) {
+                })
                 .collect(Collectors.toSet());
 
         for (var entity : ctx.getExpectedVirtualQueueByRange().entrySet()) {
@@ -515,9 +518,8 @@ public class TaskPopulateAndVerify {
 
             var testedIds = ctx.getAffectedTaskEntities().stream()
                 .filter(taskEntity -> testedAffinityGroupAndAffinity.contains(
-                        Pair.of(taskEntity.getAffinityGroup(), taskEntity.getAffinity())
-                    )
-                )
+                    new AbstractMap.SimpleEntry<>(taskEntity.getAffinityGroup(), taskEntity.getAffinity())
+                ))
                 .skip((long) fromLimitInclude * groups)
                 .limit((long) (toLimitExclude - fromLimitInclude) * groups)
                 .map(TaskEntity::getId)

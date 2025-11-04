@@ -21,7 +21,6 @@ import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -32,6 +31,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -261,17 +261,18 @@ public class ClusterProviderImpl implements ClusterProvider {
     @Override
     public Map<UUID, EnumSet<Capabilities>> clusterCapabilities() {
         return nodesWithCapabilities().entrySet().stream()
-            .map(entry -> Pair.of(
+            .map(entry -> new AbstractMap.SimpleEntry<>(
                     entry.getKey().getNode(),
                     entry.getValue().stream()
                         .filter(Objects::nonNull)
                         .map(capabilityEntity -> Capabilities.from(capabilityEntity.getValue()))
                         .collect(Collectors.toSet())
-                )
+                ) {
+                }
             )
             .filter(pair -> !pair.getValue().isEmpty())
             .collect(Collectors.toMap(
-                    Pair::getKey,
+                    Map.Entry::getKey,
                     pair -> EnumSet.copyOf(pair.getValue())
                 )
             );

@@ -6,16 +6,17 @@ import com.distributed_task_framework.model.ExecutionContext;
 import com.distributed_task_framework.model.RegisteredTask;
 import com.distributed_task_framework.model.TaskDef;
 import com.distributed_task_framework.model.TaskId;
+import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.service.DistributedTaskService;
 import com.distributed_task_framework.service.TaskSerializer;
 import com.distributed_task_framework.service.internal.TaskRegistryService;
 import com.distributed_task_framework.service.internal.WorkerManager;
 import com.distributed_task_framework.settings.TaskSettings;
+import com.distributed_task_framework.task.TaskGenerator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
-import org.apache.commons.lang3.tuple.Pair;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,9 +24,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import com.distributed_task_framework.task.TaskGenerator;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,7 +59,7 @@ class LocalTaskCommandServiceImplIntegrationTest extends BaseSpringIntegrationTe
         TaskSettings taskSettings = defaultTaskSettings.toBuilder().build();
         RegisteredTask<List<String>> registeredTask = RegisteredTask.of(TaskGenerator.emptyDefineTask(taskDef), taskSettings);
         when(taskRegistryService.<List<String>>getRegisteredLocalTask(eq("test")))
-                .thenReturn(Optional.of(registeredTask));
+            .thenReturn(Optional.of(registeredTask));
 
         //do
         TaskId taskId = distributedTaskService.schedule(taskDef, ExecutionContext.simple(List.of("hello", "world")));
@@ -66,14 +67,14 @@ class LocalTaskCommandServiceImplIntegrationTest extends BaseSpringIntegrationTe
         //verify
         //noinspection unchecked
         Assertions.assertThat(taskRepository.find(taskId.getId()))
-                .isPresent()
-                .get()
-                .satisfies(taskEntity -> assertThat((List<String>) taskSerializer.readValue(
-                                        taskEntity.getMessageBytes(),
-                                        taskDef.getInputMessageType()
-                                )
-                        ).containsExactlyInAnyOrder("hello", "world")
-                );
+            .isPresent()
+            .get()
+            .satisfies(taskEntity -> assertThat((List<String>) taskSerializer.readValue(
+                        taskEntity.getMessageBytes(),
+                        taskDef.getInputMessageType()
+                    )
+                ).containsExactlyInAnyOrder("hello", "world")
+            );
     }
 
     @SneakyThrows
@@ -91,12 +92,12 @@ class LocalTaskCommandServiceImplIntegrationTest extends BaseSpringIntegrationTe
         when(taskRegistryService.<String>getRegisteredLocalTask(eq("join-task"))).thenReturn(Optional.of(registeredCronTask));
 
         //do
-        Pair<TaskId, TaskId> taskIds = new TransactionTemplate(transactionManager).execute(transactionStatus -> {
+        Map.Entry<TaskId, TaskId> taskIds = new TransactionTemplate(transactionManager).execute(transactionStatus -> {
             try {
                 TaskId taskId = distributedTaskService.schedule(taskDef, ExecutionContext.simple("general"));
                 TaskId joinTaskId = distributedTaskService.scheduleJoin(joinTaskDef, ExecutionContext.simple("join"), List.of(taskId));
 
-                return Pair.of(taskId, joinTaskId);
+                return Map.entry(taskId, joinTaskId);
             } catch (Exception exception) {
                 throw new RuntimeException(exception);
             }
@@ -104,20 +105,20 @@ class LocalTaskCommandServiceImplIntegrationTest extends BaseSpringIntegrationTe
 
         //verify
         assertThat(taskIds).isNotNull();
-        TaskId taskId = taskIds.getLeft();
-        TaskId joinTaskId = taskIds.getRight();
+        TaskId taskId = taskIds.getKey();
+        TaskId joinTaskId = taskIds.getValue();
 
         Assertions.assertThat(taskRepository.find(taskId.getId())).isPresent()
-                .get()
-                .matches(task -> !Boolean.TRUE.equals(task.isNotToPlan()), "allowed to plan");
+            .get()
+            .matches(task -> !task.isNotToPlan(), "allowed to plan");
         Assertions.assertThat(taskRepository.find(joinTaskId.getId())).isPresent()
-                .get()
-                .matches(task -> Boolean.TRUE.equals(task.isNotToPlan()), "not allowed to plan");
+            .get()
+            .matches(TaskEntity::isNotToPlan, "not allowed to plan");
         Assertions.assertThat(taskLinkRepository.findAllByJoinTaskIdIn(List.of(joinTaskId.getId())))
-                .usingRecursiveFieldByFieldElementComparatorIgnoringFields("id")
-                .containsExactlyInAnyOrder(
-                        toJoinTaskLink(joinTaskId, taskId)
-                );
+            .usingRecursiveFieldByFieldElementComparatorIgnoringFields("id")
+            .containsExactlyInAnyOrder(
+                toJoinTaskLink(joinTaskId, taskId)
+            );
     }
 
     @SneakyThrows
@@ -137,7 +138,7 @@ class LocalTaskCommandServiceImplIntegrationTest extends BaseSpringIntegrationTe
         //do & verify
         TaskId taskId = distributedTaskService.schedule(taskDef, ExecutionContext.simple("general"));
         assertThatThrownBy(() -> distributedTaskService.scheduleJoin(joinTaskDef, ExecutionContext.simple("join"), List.of(taskId)))
-                .isInstanceOf(IllegalStateException.class);
+            .isInstanceOf(IllegalStateException.class);
 
     }
 
@@ -165,7 +166,7 @@ class LocalTaskCommandServiceImplIntegrationTest extends BaseSpringIntegrationTe
                 throw new RuntimeException();
             }
             assertThatThrownBy(() -> distributedTaskService.scheduleJoin(joinTaskDef, ExecutionContext.simple("join"), List.of(taskId)))
-                    .isInstanceOf(TaskConfigurationException.class);
+                .isInstanceOf(TaskConfigurationException.class);
         });
     }
 
@@ -193,7 +194,7 @@ class LocalTaskCommandServiceImplIntegrationTest extends BaseSpringIntegrationTe
                 throw new RuntimeException();
             }
             assertThatThrownBy(() -> distributedTaskService.scheduleJoin(joinTaskDef, ExecutionContext.simple("join"), List.of(taskId)))
-                    .isInstanceOf(TaskConfigurationException.class);
+                .isInstanceOf(TaskConfigurationException.class);
         });
     }
 }

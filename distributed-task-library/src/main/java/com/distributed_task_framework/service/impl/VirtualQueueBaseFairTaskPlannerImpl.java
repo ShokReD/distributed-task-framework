@@ -27,7 +27,6 @@ import lombok.AccessLevel;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
@@ -274,14 +273,14 @@ public class VirtualQueueBaseFairTaskPlannerImpl extends AbstractPlannerImpl imp
 
     private Map<String, Integer> fillNodeTaskLimits(Set<String> availableTaskNames) {
         return availableTaskNames.stream()
-            .map(taskName -> Pair.of(
+            .map(taskName -> Map.entry(
                     taskName,
                     taskRegistryService.getLocalTaskParameters(taskName)
                         .map(TaskSettings::getMaxParallelInNode)
                         .orElse(CommonSettings.PlannerSettings.UNLIMITED_PARALLEL_TASKS)
                 )
             )
-            .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     private Set<UUID> availableNodesCalculation() {

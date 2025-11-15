@@ -294,7 +294,7 @@ public class DeliveryManagerImpl implements DeliveryManager {
             remoteCommandEntity = remoteCommandEntity.toBuilder()
                     .failures(currentFailures)
                     .build();
-            Optional<LocalDateTime> nextRetryDateTime = commandDeliverySettings.getRetry().nextRetry(currentFailures, clock);
+            Optional<LocalDateTime> nextRetryDateTime = commandDeliverySettings.getRetry().next(currentFailures, clock);
             if (nextRetryDateTime.isPresent()) {
                 remoteCommandEntity = remoteCommandEntity.toBuilder()
                         .sendDateUtc(nextRetryDateTime.get())

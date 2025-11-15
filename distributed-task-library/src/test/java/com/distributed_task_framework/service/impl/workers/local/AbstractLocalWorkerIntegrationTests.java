@@ -7,8 +7,7 @@ import com.distributed_task_framework.model.TaskId;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.persistence.repository.entity.TestBusinessObjectEntity;
-import com.distributed_task_framework.settings.RetryV1;
-import com.distributed_task_framework.settings.RetryMode;
+import com.distributed_task_framework.settings.OffRetry;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.task.Task;
 import com.distributed_task_framework.task.TaskGenerator;
@@ -473,9 +472,7 @@ public abstract class AbstractLocalWorkerIntegrationTests extends BaseLocalWorke
         //when
         TaskDef<Void> taskDef = TaskDef.privateTaskDef("test-cron", Void.class);
         TaskSettings taskSettings = newRecurrentTaskSettings().toBuilder()
-            .retry(RetryV1.builder()
-                .retryMode(RetryMode.OFF)
-                .build())
+            .retry(new OffRetry())
             .build();
         Task<Void> mockedTask = TaskGenerator.defineTask(taskDef, m -> {
             throw new RuntimeException();

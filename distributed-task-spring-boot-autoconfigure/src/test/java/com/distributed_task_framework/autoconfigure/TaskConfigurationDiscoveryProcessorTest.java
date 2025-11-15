@@ -8,9 +8,9 @@ import com.distributed_task_framework.autoconfigure.tasks.SimpleCronCustomizedTa
 import com.distributed_task_framework.model.ExecutionContext;
 import com.distributed_task_framework.model.TaskDef;
 import com.distributed_task_framework.service.DistributedTaskService;
-import com.distributed_task_framework.settings.Backoff;
-import com.distributed_task_framework.settings.Fixed;
-import com.distributed_task_framework.settings.RetryV1;
+import com.distributed_task_framework.settings.BackoffRetry;
+import com.distributed_task_framework.settings.FixedRetry;
+import com.distributed_task_framework.settings.OffRetry;
 import com.distributed_task_framework.settings.RetryMode;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.task.Task;
@@ -95,12 +95,8 @@ class TaskConfigurationDiscoveryProcessorTest {
         TaskSettings taskSettings = TaskSettings.DEFAULT.toBuilder()
             .maxParallelInCluster(200)
             .cron("*/2 * * * * *")
-            .retry(RetryV1.builder()
-                .retryMode(RetryMode.BACKOFF)
-                .fixed(TaskSettings.DEFAULT.getRetry().getFixed())
-                .backoff(Backoff.builder()
-                    .delayPeriod(Duration.ofDays(1))
-                    .build())
+            .retry(BackoffRetry.builder()
+                .delayPeriod(Duration.ofDays(1))
                 .build())
             .build();
 
@@ -156,9 +152,7 @@ class TaskConfigurationDiscoveryProcessorTest {
         //verify
         TaskSettings taskSettings = TaskSettings.DEFAULT.toBuilder()
             .maxParallelInCluster(15)
-            .retry(TaskSettings.DEFAULT.getRetry().toBuilder()
-                .retryMode(RetryMode.OFF)
-                .build())
+            .retry(new OffRetry())
             .build();
         verifyTaskIsRegistered(customizedTask, taskSettings);
     }
@@ -179,15 +173,11 @@ class TaskConfigurationDiscoveryProcessorTest {
             .cron("* */10 * * *")
             .executionGuarantees(TaskSettings.ExecutionGuarantees.EXACTLY_ONCE)
             .dltEnabled(true)
-            .retry(RetryV1.builder()
-                .retryMode(RetryMode.BACKOFF)
-                .fixed(TaskSettings.DEFAULT.getRetry().getFixed())
-                .backoff(Backoff.builder()
-                    .initialDelay(Duration.ofMinutes(1))
-                    .delayPeriod(Duration.ofSeconds(10))
-                    .maxRetries(100)
-                    .maxDelay(Duration.ofHours(1))
-                    .build())
+            .retry(BackoffRetry.builder()
+                .initialDelay(Duration.ofMinutes(1))
+                .delayPeriod(Duration.ofSeconds(10))
+                .maxRetries(100)
+                .maxDelay(Duration.ofHours(1))
                 .build())
             .build();
 
@@ -212,14 +202,10 @@ class TaskConfigurationDiscoveryProcessorTest {
             .cron("* */10 * * *")
             .executionGuarantees(TaskSettings.ExecutionGuarantees.EXACTLY_ONCE)
             .dltEnabled(true)
-            .retry(RetryV1.builder()
-                .retryMode(RetryMode.BACKOFF)
-                .fixed(TaskSettings.DEFAULT.getRetry().getFixed())
-                .backoff(Backoff.builder()
-                    .initialDelay(Duration.ofMinutes(1))
-                    .delayPeriod(Duration.ofDays(1))
-                    .maxRetries(100)
-                    .build())
+            .retry(BackoffRetry.builder()
+                .initialDelay(Duration.ofMinutes(1))
+                .delayPeriod(Duration.ofDays(1))
+                .maxRetries(100)
                 .build())
             .build();
 
@@ -244,18 +230,10 @@ class TaskConfigurationDiscoveryProcessorTest {
             .cron("*/4 * * * *")
             .executionGuarantees(TaskSettings.ExecutionGuarantees.EXACTLY_ONCE)
             .dltEnabled(true)
-            .retry(RetryV1.builder()
-                .retryMode(RetryMode.FIXED)
-                .fixed(Fixed.builder()
-                    .delay(Duration.ofSeconds(10))
-                    .maxNumber(6)
-                    .maxInterval(Duration.ofHours(2))
-                    .build())
-                .backoff(Backoff.builder()
-                    .initialDelay(Duration.ofMinutes(1))
-                    .delayPeriod(Duration.ofDays(1))
-                    .maxRetries(100)
-                    .build())
+            .retry(FixedRetry.builder()
+                .delay(Duration.ofSeconds(10))
+                .maxNumber(6)
+                .maxInterval(Duration.ofHours(2))
                 .build())
             .build();
 

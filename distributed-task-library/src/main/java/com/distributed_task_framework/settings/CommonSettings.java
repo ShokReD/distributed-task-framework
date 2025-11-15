@@ -13,14 +13,10 @@ import java.util.Map;
 @Value
 @Builder(toBuilder = true)
 public class CommonSettings {
-    public static final RetryV1 DEFAULT_RETRY = createDefaultRetry();
+    public static final Retry DEFAULT_RETRY = createDefaultRetry();
 
-    private static RetryV1 createDefaultRetry() {
-        return RetryV1.builder()
-            .retryMode(RetryMode.BACKOFF)
-            .fixed(Fixed.builder().build())
-            .backoff(Backoff.builder().build())
-            .build();
+    private static Retry createDefaultRetry() {
+        return BackoffRetry.DEFAULT;
     }
 
     public static final CommonSettings DEFAULT = CommonSettings.builder().build();
@@ -291,7 +287,7 @@ public class CommonSettings {
          * After all attempts are failed, commands will be moved to DLC
          */
         @Builder.Default
-        RetryV1 retry = DEFAULT_RETRY.toBuilder().build();
+        Retry retry = DEFAULT_RETRY;
 
         /**
          * Function describe delay between polling remote commands depend on input command number.

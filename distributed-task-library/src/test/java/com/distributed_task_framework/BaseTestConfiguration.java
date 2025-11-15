@@ -58,9 +58,7 @@ import com.distributed_task_framework.service.internal.TaskWorkerFactory;
 import com.distributed_task_framework.service.internal.WorkerContextManager;
 import com.distributed_task_framework.service.internal.WorkerManager;
 import com.distributed_task_framework.settings.CommonSettings;
-import com.distributed_task_framework.settings.Fixed;
-import com.distributed_task_framework.settings.RetryV1;
-import com.distributed_task_framework.settings.RetryMode;
+import com.distributed_task_framework.settings.FixedRetry;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -281,12 +279,9 @@ public class BaseTestConfiguration {
                     .appToUrl(Map.of("foreign-app", new URL("http://foreign-app:8080")))
                     .build()
                 )
-                .retry(RetryV1.builder()
-                    .retryMode(RetryMode.FIXED)
-                    .fixed(Fixed.builder()
-                        .delay(Duration.ofSeconds(1))
-                        .maxNumber(4)
-                        .build())
+                .retry(FixedRetry.builder()
+                    .delay(Duration.ofSeconds(1))
+                    .maxNumber(4)
                     .build()
                 )
                 .build()
@@ -297,10 +292,7 @@ public class BaseTestConfiguration {
     @Bean
     public TaskSettings defaultTaskSettingsForTestOnly() {
         return TaskSettings.DEFAULT.toBuilder()
-            .retry(TaskSettings.DEFAULT.getRetry().toBuilder()
-                .retryMode(RetryMode.FIXED)
-                .build()
-            )
+            .retry(FixedRetry.DEFAULT)
             .build();
     }
 

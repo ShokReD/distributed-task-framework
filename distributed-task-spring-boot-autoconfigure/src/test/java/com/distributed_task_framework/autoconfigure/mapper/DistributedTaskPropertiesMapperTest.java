@@ -3,6 +3,7 @@ package com.distributed_task_framework.autoconfigure.mapper;
 
 import com.distributed_task_framework.autoconfigure.DistributedTaskProperties;
 import com.distributed_task_framework.settings.CommonSettings;
+import com.distributed_task_framework.settings.FixedRetry;
 import com.distributed_task_framework.settings.RetryMode;
 import com.google.common.collect.ImmutableRangeMap;
 import com.google.common.collect.Range;
@@ -143,12 +144,7 @@ class DistributedTaskPropertiesMapperTest {
                                 ))
                                 .build())
                         .batchSize(200)
-                        .retry(CommonSettings.DEFAULT.getDeliveryManagerSettings().getRetry().toBuilder()
-                                .retryMode(RetryMode.FIXED)
-                                .fixed(CommonSettings.DEFAULT.getDeliveryManagerSettings().getRetry().getFixed().toBuilder()
-                                        .maxNumber(10)
-                                        .build())
-                                .build())
+                        .retry(FixedRetry.DEFAULT.toBuilder().maxNumber(10).build())
                         .manageDelay(ImmutableRangeMap.<Integer, Integer>builder()
                                 .put(Range.openClosed(-1, 0), 10_000)
                                 .put(Range.openClosed(0, 100), 5_000)

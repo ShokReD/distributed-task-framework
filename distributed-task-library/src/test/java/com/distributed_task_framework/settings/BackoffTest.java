@@ -23,59 +23,59 @@ class BackoffTest {
     @Test
     void shouldReturnNextRetry() {
         //when
-        Backoff backoff = Backoff.builder()
-                .initialDelay(Duration.ofSeconds(10))
-                .delayPeriod(Duration.ofSeconds(10))
-                .maxDelay(Duration.ofHours(1))
-                .build();
+        var backoff = BackoffRetry.builder()
+            .initialDelay(Duration.ofSeconds(10))
+            .delayPeriod(Duration.ofSeconds(10))
+            .maxDelay(Duration.ofHours(1))
+            .build();
 
         //do
         // 0 + 10*2^(5 - 1) = 10*2^4 = 10*16 = 160 sec = 2 mins 40 secs
-        Optional<LocalDateTime> localDateTimeOpt = backoff.nextRetry(5, clock);
+        Optional<LocalDateTime> localDateTimeOpt = backoff.next(5, clock);
 
         //verify
         assertThat(localDateTimeOpt)
-                .isPresent()
-                .get()
-                .satisfies(localDateTime -> assertThat(localDateTime)
-                        .isEqualTo(LocalDateTime.now(clock).plusMinutes(2).plusSeconds(40))
-                );
+            .isPresent()
+            .get()
+            .satisfies(localDateTime -> assertThat(localDateTime)
+                .isEqualTo(LocalDateTime.now(clock).plusMinutes(2).plusSeconds(40))
+            );
     }
 
     @Test
     void shouldNotExceedMaxDelayWhenMaxRetriesIsHuge() {
         //when
-        Backoff backoff = Backoff.builder()
-                .initialDelay(Duration.ofSeconds(10))
-                .delayPeriod(Duration.ofSeconds(10))
-                .maxDelay(Duration.ofHours(1))
-                .maxRetries(1_000_000)
-                .build();
+        var backoff = BackoffRetry.builder()
+            .initialDelay(Duration.ofSeconds(10))
+            .delayPeriod(Duration.ofSeconds(10))
+            .maxDelay(Duration.ofHours(1))
+            .maxRetries(1_000_000)
+            .build();
 
         //do
-        Optional<LocalDateTime> localDateTimeOpt = backoff.nextRetry(444_967, clock);
+        Optional<LocalDateTime> localDateTimeOpt = backoff.next(444_967, clock);
 
         //verify
         assertThat(localDateTimeOpt)
-                .isPresent()
-                .get()
-                .satisfies(localDateTime -> assertThat(localDateTime)
-                        .isEqualTo(LocalDateTime.now(clock).plusHours(1))
-                );
+            .isPresent()
+            .get()
+            .satisfies(localDateTime -> assertThat(localDateTime)
+                .isEqualTo(LocalDateTime.now(clock).plusHours(1))
+            );
     }
 
     @Test
     void shouldStopWhenMaxRetriesExceed() {
         //when
-        Backoff backoff = Backoff.builder()
-                .initialDelay(Duration.ofSeconds(10))
-                .delayPeriod(Duration.ofSeconds(10))
-                .maxDelay(Duration.ofHours(1))
-                .maxRetries(1_000_000)
-                .build();
+        var backoff = BackoffRetry.builder()
+            .initialDelay(Duration.ofSeconds(10))
+            .delayPeriod(Duration.ofSeconds(10))
+            .maxDelay(Duration.ofHours(1))
+            .maxRetries(1_000_000)
+            .build();
 
         //do
-        Optional<LocalDateTime> localDateTimeOpt = backoff.nextRetry(1_000_001, clock);
+        Optional<LocalDateTime> localDateTimeOpt = backoff.next(1_000_001, clock);
 
         //verify
         assertThat(localDateTimeOpt).isEmpty();
@@ -84,15 +84,15 @@ class BackoffTest {
     @Test
     void shouldNotStartReprocessingWhenRetryIsZero() {
         //when
-        Backoff backoff = Backoff.builder()
-                .initialDelay(Duration.ofSeconds(10))
-                .delayPeriod(Duration.ofSeconds(10))
-                .maxDelay(Duration.ofHours(1))
-                .maxRetries(1_000_000)
-                .build();
+        var backoff = BackoffRetry.builder()
+            .initialDelay(Duration.ofSeconds(10))
+            .delayPeriod(Duration.ofSeconds(10))
+            .maxDelay(Duration.ofHours(1))
+            .maxRetries(1_000_000)
+            .build();
 
         //do
-        Optional<LocalDateTime> localDateTimeOpt = backoff.nextRetry(0, clock);
+        Optional<LocalDateTime> localDateTimeOpt = backoff.next(0, clock);
 
         //verify
         assertThat(localDateTimeOpt).isEmpty();

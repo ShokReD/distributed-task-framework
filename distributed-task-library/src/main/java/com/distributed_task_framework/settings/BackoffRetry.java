@@ -1,5 +1,6 @@
 package com.distributed_task_framework.settings;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
@@ -15,7 +16,8 @@ import java.util.Optional;
  * where <pre>failCount = 1, 2, 3, ... nextRetry = Min(nextRetry, currentTime + maxDelay)</pre>
  */
 @Value
-@Builder
+@Builder(toBuilder = true)
+@AllArgsConstructor
 public class BackoffRetry implements Retry {
     public static final BackoffRetry DEFAULT = BackoffRetry.builder().build();
 

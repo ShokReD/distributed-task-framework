@@ -2,8 +2,11 @@ package com.distributed_task_framework.autoconfigure.mapper;
 
 import com.distributed_task_framework.autoconfigure.DistributedTaskProperties;
 import com.distributed_task_framework.exception.TaskConfigurationException;
+import com.distributed_task_framework.settings.BackoffRetry;
 import com.distributed_task_framework.settings.CommonSettings;
-import com.distributed_task_framework.settings.RetryV1;
+import com.distributed_task_framework.settings.FixedRetry;
+import com.distributed_task_framework.settings.OffRetry;
+import com.distributed_task_framework.settings.Retry;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.google.common.collect.ImmutableRangeMap;
 import com.google.common.collect.Maps;
@@ -94,36 +97,56 @@ public interface DistributedTaskPropertiesMapper {
         return mergedManagerSettings;
     }
 
-    default RetryV1 merge(RetryV1 defaultRetrySettings, DistributedTaskProperties.Retry retry) {
-        if (retry == null) {
-            return defaultRetrySettings.toBuilder()
-                .build();
-        }
-        DistributedTaskProperties.Retry defaultRetryProperties = map(defaultRetrySettings);
-        defaultRetryProperties = mergeInternal(defaultRetryProperties, retry);
-        var defaultFixed = defaultRetryProperties.getFixed() != null ?
-            defaultRetryProperties.getFixed() :
-            DistributedTaskProperties.Fixed.builder().build();
-        var defaultBackoff = defaultRetryProperties.getBackoff() != null ?
-            defaultRetryProperties.getBackoff() :
-            DistributedTaskProperties.Backoff.builder().build();
-
-        if (retry.getFixed() != null) {
-            defaultFixed = merge(defaultFixed, retry.getFixed());
-        }
-        if (retry.getBackoff() != null) {
-            defaultBackoff = merge(defaultBackoff, retry.getBackoff());
-        }
-        defaultRetryProperties = defaultRetryProperties.toBuilder()
-            .fixed(defaultFixed)
-            .backoff(defaultBackoff)
-            .build();
-        return map(defaultRetryProperties);
+    private <T> T or(T value, T other) {
+        return value != null ? value : other;
     }
 
-    RetryV1 map(DistributedTaskProperties.Retry defaultRetryProperties);
+    default Retry merge(Retry defaultRetrySettings, DistributedTaskProperties.Retry retry) {
+        if (retry == null) {
+            return defaultRetrySettings;
+        }
+        if (retry.getRetryMode().equalsIgnoreCase("fixed")) {
+            var fixedProperties = retry.getFixed();
+            if (defaultRetrySettings instanceof FixedRetry fixedRetry) {
+                return new FixedRetry(
+                    or(fixedProperties.getDelay(), fixedRetry.getDelay()),
+                    or(fixedProperties.getMaxNumber(), fixedRetry.getMaxNumber()),
+                    or(fixedProperties.getMaxInterval(), fixedRetry.getMaxInterval())
+                );
+            } else {
+                return new FixedRetry(
+                    fixedProperties.getDelay(),
+                    fixedProperties.getMaxNumber(),
+                    fixedProperties.getMaxInterval()
+                );
+            }
+        } else if (retry.getRetryMode().equalsIgnoreCase("backoff")) {
+            var backoffProperties = retry.getBackoff();
+            if (defaultRetrySettings instanceof BackoffRetry backoffRetry) {
+                return new BackoffRetry(
+                    or(backoffProperties.getInitialDelay(), backoffRetry.getInitialDelay()),
+                    or(backoffProperties.getDelayPeriod(), backoffRetry.getDelayPeriod()),
+                    or(backoffProperties.getMaxRetries(), backoffRetry.getMaxRetries()),
+                    or(backoffProperties.getMaxDelay(), backoffRetry.getMaxDelay())
+                );
+            } else {
+                return new BackoffRetry(
+                    backoffProperties.getInitialDelay(),
+                    backoffProperties.getDelayPeriod(),
+                    backoffProperties.getMaxRetries(),
+                    backoffProperties.getMaxDelay()
+                );
+            }
+        } else if (retry.getRetryMode().equalsIgnoreCase("off")) {
+            return new OffRetry();
+        } else {
+            throw new IllegalArgumentException("Invalid type of retry mode '%s'. Allowed 'fixed', 'backoff', 'off'".formatted(retry.getRetryMode()));
+        }
+    }
 
-    DistributedTaskProperties.Retry map(RetryV1 defaultRetrySettings);
+    Retry map(DistributedTaskProperties.Retry defaultRetryProperties);
+
+    DistributedTaskProperties.Retry map(Retry defaultRetrySettings);
 
     DistributedTaskProperties.Retry mergeInternal(DistributedTaskProperties.Retry defaultRetrySettings,
                                                   DistributedTaskProperties.Retry retry);

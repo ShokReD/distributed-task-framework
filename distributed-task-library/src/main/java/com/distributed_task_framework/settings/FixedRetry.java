@@ -1,5 +1,6 @@
 package com.distributed_task_framework.settings;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
@@ -13,6 +14,7 @@ import java.util.Optional;
  */
 @Value
 @Builder(toBuilder = true)
+@AllArgsConstructor
 public class FixedRetry implements Retry {
 
     public static final FixedRetry DEFAULT = FixedRetry.builder().build();

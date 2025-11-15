@@ -2,11 +2,11 @@ package com.distributed_task_framework.settings;
 
 import com.distributed_task_framework.model.ExecutionContext;
 import com.distributed_task_framework.task.Task;
+import jakarta.annotation.Nullable;
 import lombok.Builder;
 import lombok.Value;
 import org.springframework.util.StringUtils;
 
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 
 /**
@@ -40,7 +40,7 @@ public class TaskSettings {
      * Retry policy for task.
      */
     @Builder.Default
-    RetryV1 retry = CommonSettings.DEFAULT_RETRY.toBuilder().build();
+    Retry retry = CommonSettings.DEFAULT_RETRY;
 
     /**
      * How many parallel tasks can be in the cluster.

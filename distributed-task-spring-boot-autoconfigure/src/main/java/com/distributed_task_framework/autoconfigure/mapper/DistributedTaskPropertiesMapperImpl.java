@@ -1,18 +1,17 @@
 package com.distributed_task_framework.autoconfigure.mapper;
 
 import com.distributed_task_framework.autoconfigure.DistributedTaskProperties;
-import com.distributed_task_framework.settings.Backoff;
+import com.distributed_task_framework.settings.BackoffRetry;
 import com.distributed_task_framework.settings.CommonSettings;
-import com.distributed_task_framework.settings.Fixed;
-import com.distributed_task_framework.settings.RetryMode;
-import com.distributed_task_framework.settings.RetryV1;
+import com.distributed_task_framework.settings.FixedRetry;
+import com.distributed_task_framework.settings.OffRetry;
+import com.distributed_task_framework.settings.Retry;
 import com.distributed_task_framework.settings.TaskSettings;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Component
 public class DistributedTaskPropertiesMapperImpl implements DistributedTaskPropertiesMapper {
@@ -169,33 +168,51 @@ public class DistributedTaskPropertiesMapperImpl implements DistributedTaskPrope
     }
 
     @Override
-    public RetryV1 map(DistributedTaskProperties.Retry defaultRetryProperties) {
+    public Retry map(DistributedTaskProperties.Retry defaultRetryProperties) {
         if (defaultRetryProperties == null) {
             return null;
         }
-
-        return RetryV1.builder()
-            .fixed(fixedToFixed(defaultRetryProperties.getFixed()))
-            .backoff(backoffToBackoff(defaultRetryProperties.getBackoff()))
-            .retryMode(Optional.ofNullable(defaultRetryProperties.getRetryMode()).map(RetryMode::valueOf).orElse(null))
-            .build();
+        if (defaultRetryProperties.getRetryMode().equalsIgnoreCase("fixed")) {
+            var fixedProperties = defaultRetryProperties.getFixed();
+            return new FixedRetry(
+                fixedProperties.getDelay(),
+                fixedProperties.getMaxNumber(),
+                fixedProperties.getMaxInterval()
+            );
+        } else if (defaultRetryProperties.getRetryMode().equalsIgnoreCase("backoff")) {
+            var backoffProperties = defaultRetryProperties.getBackoff();
+            return new BackoffRetry(
+                backoffProperties.getInitialDelay(),
+                backoffProperties.getDelayPeriod(),
+                backoffProperties.getMaxRetries(),
+                backoffProperties.getMaxDelay()
+            );
+        } else if (defaultRetryProperties.getRetryMode().equalsIgnoreCase("off")) {
+            return new OffRetry();
+        } else {
+            throw new IllegalArgumentException("Invalid type of retry mode '%s'. Allowed 'fixed', 'backoff', 'off'".formatted(defaultRetryProperties.getRetryMode()));
+        }
     }
 
     @Override
-    public DistributedTaskProperties.Retry map(RetryV1 defaultRetrySettings) {
+    public DistributedTaskProperties.Retry map(Retry defaultRetrySettings) {
         if (defaultRetrySettings == null) {
             return null;
         }
 
-        DistributedTaskProperties.Retry.RetryBuilder retry = DistributedTaskProperties.Retry.builder();
-
-        if (defaultRetrySettings.getRetryMode() != null) {
-            retry.retryMode(defaultRetrySettings.getRetryMode().name());
-        }
-        retry.fixed(fixedToFixed1(defaultRetrySettings.getFixed()));
-        retry.backoff(backoffToBackoff1(defaultRetrySettings.getBackoff()));
-
-        return retry.build();
+        return switch (defaultRetrySettings) {
+            case FixedRetry fixedRetry -> DistributedTaskProperties.Retry.builder()
+                .retryMode("fixed")
+                .fixed(fixedToFixed1(fixedRetry))
+                .build();
+            case BackoffRetry backoffRetry -> DistributedTaskProperties.Retry.builder()
+                .retryMode("backoff")
+                .backoff(backoffToBackoff1(backoffRetry))
+                .build();
+            case OffRetry ignored -> DistributedTaskProperties.Retry.builder()
+                .retryMode("off")
+                .build();
+        };
     }
 
     @Override
@@ -569,38 +586,7 @@ public class DistributedTaskPropertiesMapperImpl implements DistributedTaskPrope
         return defaultBackoff;
     }
 
-    protected Fixed fixedToFixed(DistributedTaskProperties.Fixed fixed) {
-        if (fixed == null) {
-            return null;
-        }
-
-        Fixed.FixedBuilder fixed1 = Fixed.builder();
-
-        fixed1.delay(fixed.getDelay());
-        fixed1.maxNumber(fixed.getMaxNumber());
-        fixed1.maxInterval(fixed.getMaxInterval());
-
-        return fixed1.build();
-    }
-
-    protected Backoff backoffToBackoff(DistributedTaskProperties.Backoff backoff) {
-        if (backoff == null) {
-            return null;
-        }
-
-        Backoff.BackoffBuilder backoff1 = Backoff.builder();
-
-        backoff1.initialDelay(backoff.getInitialDelay());
-        backoff1.delayPeriod(backoff.getDelayPeriod());
-        if (backoff.getMaxRetries() != null) {
-            backoff1.maxRetries(backoff.getMaxRetries());
-        }
-        backoff1.maxDelay(backoff.getMaxDelay());
-
-        return backoff1.build();
-    }
-
-    protected DistributedTaskProperties.Fixed fixedToFixed1(Fixed fixed) {
+    protected DistributedTaskProperties.Fixed fixedToFixed1(FixedRetry fixed) {
         if (fixed == null) {
             return null;
         }
@@ -614,7 +600,7 @@ public class DistributedTaskPropertiesMapperImpl implements DistributedTaskPrope
         return fixed1.build();
     }
 
-    protected DistributedTaskProperties.Backoff backoffToBackoff1(Backoff backoff) {
+    protected DistributedTaskProperties.Backoff backoffToBackoff1(BackoffRetry backoff) {
         if (backoff == null) {
             return null;
         }

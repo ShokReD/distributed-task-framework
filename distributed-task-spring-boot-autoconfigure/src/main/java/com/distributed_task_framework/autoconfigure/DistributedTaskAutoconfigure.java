@@ -2,6 +2,7 @@ package com.distributed_task_framework.autoconfigure;
 
 import com.distributed_task_framework.autoconfigure.annotation.DtfDataSource;
 import com.distributed_task_framework.autoconfigure.mapper.DistributedTaskPropertiesMapper;
+import com.distributed_task_framework.autoconfigure.mapper.DistributedTaskPropertiesMapperImpl;
 import com.distributed_task_framework.mapper.CommandMapper;
 import com.distributed_task_framework.mapper.NodeStateMapper;
 import com.distributed_task_framework.mapper.PartitionMapper;
@@ -304,7 +305,7 @@ public class DistributedTaskAutoconfigure {
     @Bean
     @ConditionalOnMissingBean
     public DistributedTaskPropertiesMapper taskParameterMapper() {
-        return Mappers.getMapper(DistributedTaskPropertiesMapper.class);
+        return new DistributedTaskPropertiesMapperImpl();
     }
 
     @Bean
@@ -328,7 +329,8 @@ public class DistributedTaskAutoconfigure {
 
     //use in order to escape conflict with beans form other standard libraries like spring-boot-starter-actuator
     //because simple using of conditional doesn't work
-    public record OperatingSystemMXBeanHolder(OperatingSystemMXBean operatingSystemMXBean) {}
+    public record OperatingSystemMXBeanHolder(OperatingSystemMXBean operatingSystemMXBean) {
+    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -540,12 +542,12 @@ public class DistributedTaskAutoconfigure {
                                              CommonSettings commonSettings,
                                              Clock clock) {
         return new PartitionTrackerImpl(
-                platformTransactionManager,
-                taskRepository,
-                partitionRepository,
-                partitionMapper,
-                commonSettings,
-                clock
+            platformTransactionManager,
+            taskRepository,
+            partitionRepository,
+            partitionMapper,
+            commonSettings,
+            clock
         );
     }
 

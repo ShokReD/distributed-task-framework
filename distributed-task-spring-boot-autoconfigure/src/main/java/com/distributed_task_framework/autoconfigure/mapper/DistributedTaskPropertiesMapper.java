@@ -8,24 +8,18 @@ import com.distributed_task_framework.settings.TaskSettings;
 import com.google.common.collect.ImmutableRangeMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
-import jakarta.annotation.Nullable;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import java.util.List;
 import java.util.Map;
 
-@Mapper(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface DistributedTaskPropertiesMapper {
 
     TaskSettings map(DistributedTaskProperties.TaskProperties taskProperties);
 
     DistributedTaskProperties.TaskProperties map(TaskSettings taskSettings);
 
-    default CommonSettings merge(@MappingTarget CommonSettings commonSettings,
-                                 @Nullable DistributedTaskProperties.Common common) {
+    default CommonSettings merge(CommonSettings commonSettings,
+                                 DistributedTaskProperties.Common common) {
         if (common == null) {
             return commonSettings;
         }
@@ -54,7 +48,7 @@ public interface DistributedTaskPropertiesMapper {
             .build();
     }
 
-    default CommonSettings.StatSettings merge(@MappingTarget CommonSettings.StatSettings defaultStatistics,
+    default CommonSettings.StatSettings merge(CommonSettings.StatSettings defaultStatistics,
                                               DistributedTaskProperties.Statistics statistics) {
         DistributedTaskProperties.Statistics defaultPropertiesRegistry = map(defaultStatistics);
         DistributedTaskProperties.Statistics mergedRegistry = merge(defaultPropertiesRegistry, statistics);
@@ -63,39 +57,29 @@ public interface DistributedTaskPropertiesMapper {
 
     CommonSettings.StatSettings map(DistributedTaskProperties.Statistics mergedStatistics);
 
-    DistributedTaskProperties.Statistics merge(@MappingTarget DistributedTaskProperties.Statistics defaultStatistics,
+    DistributedTaskProperties.Statistics merge(DistributedTaskProperties.Statistics defaultStatistics,
                                                DistributedTaskProperties.Statistics statistics);
 
     DistributedTaskProperties.Statistics map(CommonSettings.StatSettings defaultStatistics);
 
-    default CommonSettings mergeInternal(@MappingTarget CommonSettings commonSettings,
+    default CommonSettings mergeInternal(CommonSettings commonSettings,
                                          DistributedTaskProperties.Common common) {
         DistributedTaskProperties.Common defaultCommon = map(commonSettings);
         DistributedTaskProperties.Common mergedSettings = merge(defaultCommon, common);
         return map(mergedSettings);
     }
 
-    DistributedTaskProperties.Common merge(@MappingTarget DistributedTaskProperties.Common defaultCommon,
+    DistributedTaskProperties.Common merge(DistributedTaskProperties.Common defaultCommon,
                                            DistributedTaskProperties.Common common);
 
-    @Mapping(target = "registrySettings", ignore = true)
-    @Mapping(target = "plannerSettings", ignore = true)
-    @Mapping(target = "workerManagerSettings", ignore = true)
-    @Mapping(target = "statSettings", ignore = true)
-    @Mapping(target = "deliveryManagerSettings", ignore = true)
     CommonSettings map(DistributedTaskProperties.Common mergedSettings);
 
-    @Mapping(target = "registry", ignore = true)
-    @Mapping(target = "planner", ignore = true)
-    @Mapping(target = "workerManager", ignore = true)
-    @Mapping(target = "statistics", ignore = true)
-    @Mapping(target = "deliveryManager", ignore = true)
     DistributedTaskProperties.Common map(CommonSettings commonSettings);
 
     /**
      * @noinspection UnstableApiUsage
      */
-    default CommonSettings.DeliveryManagerSettings merge(@MappingTarget CommonSettings.DeliveryManagerSettings deliveryManagerSettings,
+    default CommonSettings.DeliveryManagerSettings merge(CommonSettings.DeliveryManagerSettings deliveryManagerSettings,
                                                          DistributedTaskProperties.DeliveryManager deliveryManager) {
         var mergedManagerSettings = mergeInternal(deliveryManagerSettings, deliveryManager);
         if (!deliveryManager.getManageDelay().isEmpty()) {
@@ -110,7 +94,7 @@ public interface DistributedTaskPropertiesMapper {
         return mergedManagerSettings;
     }
 
-    default RetryV1 merge(@MappingTarget RetryV1 defaultRetrySettings, DistributedTaskProperties.Retry retry) {
+    default RetryV1 merge(RetryV1 defaultRetrySettings, DistributedTaskProperties.Retry retry) {
         if (retry == null) {
             return defaultRetrySettings.toBuilder()
                 .build();
@@ -141,10 +125,10 @@ public interface DistributedTaskPropertiesMapper {
 
     DistributedTaskProperties.Retry map(RetryV1 defaultRetrySettings);
 
-    DistributedTaskProperties.Retry mergeInternal(@MappingTarget DistributedTaskProperties.Retry defaultRetrySettings,
+    DistributedTaskProperties.Retry mergeInternal(DistributedTaskProperties.Retry defaultRetrySettings,
                                                   DistributedTaskProperties.Retry retry);
 
-    default CommonSettings.DeliveryManagerSettings mergeInternal(@MappingTarget CommonSettings.DeliveryManagerSettings deliveryManagerSettings,
+    default CommonSettings.DeliveryManagerSettings mergeInternal(CommonSettings.DeliveryManagerSettings deliveryManagerSettings,
                                                                  DistributedTaskProperties.DeliveryManager deliveryManager) {
         DistributedTaskProperties.DeliveryManager defaultDeliveryManager = map(deliveryManagerSettings);
         DistributedTaskProperties.DeliveryManager mergedRegistry = merge(defaultDeliveryManager, deliveryManager);
@@ -166,18 +150,16 @@ public interface DistributedTaskPropertiesMapper {
             .build();
     }
 
-    @Mapping(target = "manageDelay", ignore = true)
     DistributedTaskProperties.DeliveryManager mapInternal(CommonSettings.DeliveryManagerSettings deliveryManagerSettings);
 
-    @Mapping(target = "manageDelay", ignore = true)
-    DistributedTaskProperties.DeliveryManager merge(@MappingTarget DistributedTaskProperties.DeliveryManager deliveryManagerSettings,
+    DistributedTaskProperties.DeliveryManager merge(DistributedTaskProperties.DeliveryManager deliveryManagerSettings,
                                                     DistributedTaskProperties.DeliveryManager workerManager);
 
 
     /**
      * @noinspection UnstableApiUsage
      */
-    default CommonSettings.WorkerManagerSettings merge(@MappingTarget CommonSettings.WorkerManagerSettings workerManagerSettings,
+    default CommonSettings.WorkerManagerSettings merge(CommonSettings.WorkerManagerSettings workerManagerSettings,
                                                        DistributedTaskProperties.WorkerManager workerManager) {
         var mergedManagerSettings = mergeInternal(workerManagerSettings, workerManager);
         if (!workerManager.getManageDelay().isEmpty()) {
@@ -189,7 +171,7 @@ public interface DistributedTaskPropertiesMapper {
         return mergedManagerSettings;
     }
 
-    default CommonSettings.WorkerManagerSettings mergeInternal(@MappingTarget CommonSettings.WorkerManagerSettings workerManagerSettings,
+    default CommonSettings.WorkerManagerSettings mergeInternal(CommonSettings.WorkerManagerSettings workerManagerSettings,
                                                                DistributedTaskProperties.WorkerManager workerManager) {
         DistributedTaskProperties.WorkerManager defaultWorkerManager = map(workerManagerSettings);
         DistributedTaskProperties.WorkerManager mergedRegistry = merge(defaultWorkerManager, workerManager);
@@ -198,8 +180,7 @@ public interface DistributedTaskPropertiesMapper {
 
     CommonSettings.WorkerManagerSettings map(DistributedTaskProperties.WorkerManager mergedRegistry);
 
-    @Mapping(target = "manageDelay", ignore = true)
-    DistributedTaskProperties.WorkerManager merge(@MappingTarget DistributedTaskProperties.WorkerManager defaultWorkerManager,
+    DistributedTaskProperties.WorkerManager merge(DistributedTaskProperties.WorkerManager defaultWorkerManager,
                                                   DistributedTaskProperties.WorkerManager workerManager);
 
     /**
@@ -215,10 +196,9 @@ public interface DistributedTaskPropertiesMapper {
             .build();
     }
 
-    @Mapping(target = "manageDelay", ignore = true)
     DistributedTaskProperties.WorkerManager mapInternal(CommonSettings.WorkerManagerSettings workerManagerSettings);
 
-    default CommonSettings.RegistrySettings merge(@MappingTarget CommonSettings.RegistrySettings defaultRegistrySettings,
+    default CommonSettings.RegistrySettings merge(CommonSettings.RegistrySettings defaultRegistrySettings,
                                                   DistributedTaskProperties.Registry registry) {
         DistributedTaskProperties.Registry defaultPropertiesRegistry = map(defaultRegistrySettings);
         DistributedTaskProperties.Registry mergedRegistry = merge(defaultPropertiesRegistry, registry);
@@ -227,7 +207,7 @@ public interface DistributedTaskPropertiesMapper {
 
     CommonSettings.RegistrySettings map(DistributedTaskProperties.Registry mergedRegistry);
 
-    DistributedTaskProperties.Registry merge(@MappingTarget DistributedTaskProperties.Registry defaultPropertiesRegistry,
+    DistributedTaskProperties.Registry merge(DistributedTaskProperties.Registry defaultPropertiesRegistry,
                                              DistributedTaskProperties.Registry registry);
 
     DistributedTaskProperties.Registry map(CommonSettings.RegistrySettings defaultRegistrySettings);
@@ -235,7 +215,7 @@ public interface DistributedTaskPropertiesMapper {
     /**
      * @noinspection UnstableApiUsage
      */
-    default CommonSettings.PlannerSettings merge(@MappingTarget CommonSettings.PlannerSettings defaultPlannerSettings,
+    default CommonSettings.PlannerSettings merge(CommonSettings.PlannerSettings defaultPlannerSettings,
                                                  DistributedTaskProperties.Planner planner) {
         defaultPlannerSettings = mergeInternal(defaultPlannerSettings, planner);
         var plannerBuilder = defaultPlannerSettings.toBuilder();
@@ -278,23 +258,21 @@ public interface DistributedTaskPropertiesMapper {
             .build();
     }
 
-    @Mapping(target = "pollingDelay", ignore = true)
     DistributedTaskProperties.Planner mapInternal(CommonSettings.PlannerSettings defaultPlannerSettings);
 
-    default CommonSettings.PlannerSettings mergeInternal(@MappingTarget CommonSettings.PlannerSettings defaultPlannerSettings,
+    default CommonSettings.PlannerSettings mergeInternal(CommonSettings.PlannerSettings defaultPlannerSettings,
                                                          DistributedTaskProperties.Planner planner) {
         DistributedTaskProperties.Planner defaultPropertiesPlanner = map(defaultPlannerSettings);
         DistributedTaskProperties.Planner mergedPlanner = merge(defaultPropertiesPlanner, planner);
         return map(mergedPlanner);
     }
 
-    @Mapping(target = "pollingDelay", ignore = true)
     CommonSettings.PlannerSettings map(DistributedTaskProperties.Planner mergedPlanner);
 
-    DistributedTaskProperties.Planner merge(@MappingTarget DistributedTaskProperties.Planner defaultPropertiesPlanner,
+    DistributedTaskProperties.Planner merge(DistributedTaskProperties.Planner defaultPropertiesPlanner,
                                             DistributedTaskProperties.Planner planner);
 
-    default DistributedTaskProperties.TaskProperties merge(@MappingTarget DistributedTaskProperties.TaskProperties defaultSettings,
+    default DistributedTaskProperties.TaskProperties merge(DistributedTaskProperties.TaskProperties defaultSettings,
                                                            DistributedTaskProperties.TaskProperties taskProperties) {
         DistributedTaskProperties.Retry defaultRetry = defaultSettings.getRetry() != null ? defaultSettings.getRetry() :
             DistributedTaskProperties.Retry.builder().build();
@@ -324,13 +302,12 @@ public interface DistributedTaskPropertiesMapper {
             .build();
     }
 
-    @Mapping(target = "retry", ignore = true)
-    DistributedTaskProperties.TaskProperties mergeInternal(@MappingTarget DistributedTaskProperties.TaskProperties defaultSettings,
+    DistributedTaskProperties.TaskProperties mergeInternal(DistributedTaskProperties.TaskProperties defaultSettings,
                                                            DistributedTaskProperties.TaskProperties taskProperties);
 
-    DistributedTaskProperties.Backoff merge(@MappingTarget DistributedTaskProperties.Backoff defaultBackoff,
+    DistributedTaskProperties.Backoff merge(DistributedTaskProperties.Backoff defaultBackoff,
                                             DistributedTaskProperties.Backoff backoff);
 
-    DistributedTaskProperties.Fixed merge(@MappingTarget DistributedTaskProperties.Fixed defaultBackoff,
+    DistributedTaskProperties.Fixed merge(DistributedTaskProperties.Fixed defaultBackoff,
                                           DistributedTaskProperties.Fixed backoff);
 }

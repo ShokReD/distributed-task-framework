@@ -5,8 +5,6 @@ import com.distributed_task_framework.comparator.RoundingLocalDateTimeComparator
 import com.distributed_task_framework.model.TaskId;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -18,7 +16,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -37,7 +37,7 @@ class TaskWorkerRepositoryImplTest extends BaseRepositoryTest {
         //when
         var workerId = TaskPopulateAndVerify.getNode(0);
         var foreignWorkerId = TaskPopulateAndVerify.getNode(1);
-        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.withWorker(2, workerId),
                 Range.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.withWorker(2, foreignWorkerId)
             )
@@ -71,7 +71,7 @@ class TaskWorkerRepositoryImplTest extends BaseRepositoryTest {
     @Test
     void filterCanceled() {
         //when
-        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one(),
                 Range.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.oneCanceled()
             )
@@ -79,10 +79,10 @@ class TaskWorkerRepositoryImplTest extends BaseRepositoryTest {
         var populateNewTasks = taskPopulateAndVerify.populate(0, 10, VirtualQueue.NEW, knownPopulationSpecs);
         var populateDeletedTasks = taskPopulateAndVerify.populate(0, 10, VirtualQueue.DELETED, knownPopulationSpecs);
 
-        var taskIdToCheck = ImmutableSet.<TaskId>builder()
-            .addAll(populateNewTasks.stream().map(this::toTaskId).collect(Collectors.toSet()))
-            .addAll(populateDeletedTasks.stream().map(this::toTaskId).collect(Collectors.toSet()))
-            .build();
+        var taskIdToCheck = Stream.of(populateNewTasks, populateDeletedTasks)
+            .flatMap(Collection::stream)
+            .map(this::toTaskId)
+            .collect(Collectors.toUnmodifiableSet());
 
         //do
         Set<TaskId> actualTaskIds = repository.filterCanceled(taskIdToCheck);

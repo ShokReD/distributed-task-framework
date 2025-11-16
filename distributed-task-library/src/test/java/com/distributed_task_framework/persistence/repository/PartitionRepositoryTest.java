@@ -1,14 +1,14 @@
 package com.distributed_task_framework.persistence.repository;
 
 import com.distributed_task_framework.persistence.entity.PartitionEntity;
-import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -34,11 +34,10 @@ class PartitionRepositoryTest extends BaseRepositoryTest {
         //when
         var existedPartitions = createTestPartitions();
         partitionRepository.saveAll(existedPartitions);
-        var partitionsToFilter = ImmutableList.<PartitionEntity>builder()
-                .addAll(existedPartitions)
-                .add(createPartition("unknown", "unknown", 1L))
-                .add(createPartition("afg1", "t1", 3L))
-                .build();
+        var partitionsToFilter = new ArrayList<>(existedPartitions) {{
+            add(createPartition("unknown", "unknown", 1L));
+            add(createPartition("afg1", "t1", 3L));
+        }};
 
         //do
         var actualPartitions = partitionRepository.filterExisted(partitionsToFilter);
@@ -58,8 +57,8 @@ class PartitionRepositoryTest extends BaseRepositoryTest {
 
         //verify
         var expectedPartitions = existedPartitions.stream()
-                .filter(partition -> partition.getTimeBucket() <= 2L)
-                .toList();
+            .filter(partition -> partition.getTimeBucket() <= 2L)
+            .toList();
         Assertions.assertThat(actualPartitions).containsAll(expectedPartitions);
     }
 
@@ -78,12 +77,12 @@ class PartitionRepositoryTest extends BaseRepositoryTest {
 
     private Collection<PartitionEntity> createTestPartitions() {
         return List.of(
-                createPartition("afg1", "t1", 1L),
-                createPartition(null, "t2", 1L),
-                createPartition("afg1", "t1", 2L),
-                createPartition(null, "t2", 2L),
-                createPartition("afg1", "t1", 3L),
-                createPartition(null, "t2", 3L)
+            createPartition("afg1", "t1", 1L),
+            createPartition(null, "t2", 1L),
+            createPartition("afg1", "t1", 2L),
+            createPartition(null, "t2", 2L),
+            createPartition("afg1", "t1", 3L),
+            createPartition(null, "t2", 3L)
         );
     }
 }

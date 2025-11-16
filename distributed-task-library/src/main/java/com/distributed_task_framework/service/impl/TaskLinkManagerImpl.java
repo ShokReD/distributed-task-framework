@@ -5,26 +5,25 @@ import com.distributed_task_framework.model.JoinTaskMessage;
 import com.distributed_task_framework.model.JoinTaskMessageContainer;
 import com.distributed_task_framework.model.TaskDef;
 import com.distributed_task_framework.model.TaskId;
-import com.distributed_task_framework.service.TaskSerializer;
-import com.distributed_task_framework.utils.JdbcTools;
-import com.distributed_task_framework.utils.StringUtils;
-import com.fasterxml.jackson.databind.JavaType;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
 import com.distributed_task_framework.persistence.entity.TaskLinkEntity;
 import com.distributed_task_framework.persistence.entity.TaskMessageEntity;
 import com.distributed_task_framework.persistence.entity.UUIDEntity;
 import com.distributed_task_framework.persistence.repository.TaskLinkRepository;
 import com.distributed_task_framework.persistence.repository.TaskMessageRepository;
+import com.distributed_task_framework.service.TaskSerializer;
 import com.distributed_task_framework.service.internal.TaskLinkManager;
 import com.distributed_task_framework.settings.CommonSettings;
+import com.distributed_task_framework.utils.JdbcTools;
+import com.distributed_task_framework.utils.SetUtils;
+import com.distributed_task_framework.utils.StringUtils;
+import com.fasterxml.jackson.databind.JavaType;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -46,13 +46,13 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
     @Override
     public void createLinks(TaskId joinTaskId, List<TaskId> joinList) {
         List<TaskLinkEntity> joinTaskLinkEntities = joinList.stream()
-                .map(taskId -> TaskLinkEntity.builder()
-                        .joinTaskId(joinTaskId.getId())
-                        .taskToJoinId(taskId.getId())
-                        .joinTaskName(joinTaskId.getTaskName())
-                        .build()
-                )
-                .collect(Collectors.toList());
+            .map(taskId -> TaskLinkEntity.builder()
+                .joinTaskId(joinTaskId.getId())
+                .taskToJoinId(taskId.getId())
+                .joinTaskName(joinTaskId.getTaskName())
+                .build()
+            )
+            .collect(Collectors.toList());
         taskLinkRepository.saveAll(joinTaskLinkEntities);
     }
 
@@ -60,13 +60,13 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
     public void inheritLinks(UUID parent, Set<UUID> children) {
         List<TaskLinkEntity> parentJoinTaskLinkEntities = taskLinkRepository.findAllByTaskToJoinId(parent);
         Set<TaskLinkEntity> inheritedLinks = children.stream()
-                .flatMap(child -> parentJoinTaskLinkEntities.stream()
-                        .map(entity -> entity.toBuilder()
-                                .id(null) //new one
-                                .taskToJoinId(child)
-                                .completed(false)
-                                .build()))
-                .collect(Collectors.toSet());
+            .flatMap(child -> parentJoinTaskLinkEntities.stream()
+                .map(entity -> entity.toBuilder()
+                    .id(null) //new one
+                    .taskToJoinId(child)
+                    .completed(false)
+                    .build()))
+            .collect(Collectors.toSet());
         taskLinkRepository.saveAll(inheritedLinks);
     }
 
@@ -78,60 +78,59 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
     @Override
     public Set<UUID> detectLeaves(Set<UUID> trees) {
         Set<UUID> intermediateTaskIds = taskLinkRepository.filterIntermediateTasks(JdbcTools.UUIDsToStringArray(trees))
-                .stream()
-                .map(UUIDEntity::getUuid)
-                .collect(Collectors.toSet());
-        return Sets.newHashSet(Sets.difference(trees, intermediateTaskIds));
+            .stream()
+            .map(UUIDEntity::getUuid)
+            .collect(Collectors.toSet());
+        return SetUtils.difference(trees, intermediateTaskIds);
     }
 
     @Override
     public <T> Collection<JoinTaskMessage<T>> getJoinMessages(TaskId currentTaskId, TaskDef<T> joinTaskDef) throws IOException {
         String appName = StringUtils.isNotBlank(joinTaskDef.getAppName()) ?
-                joinTaskDef.getAppName() :
-                commonSettings.getAppName();
+            joinTaskDef.getAppName() :
+            commonSettings.getAppName();
         String joinTaskName = joinTaskDef.getTaskName();
         List<UUIDEntity> allJoinTasksFromBranch = taskLinkRepository.findAllJoinTasksFromBranchByName(
-                currentTaskId.getId(),
-                joinTaskName
+            currentTaskId.getId(),
+            joinTaskName
         );
         Set<UUID> allAvailableJoinTasks = allJoinTasksFromBranch.stream()
-                .map(UUIDEntity::getUuid)
-                .collect(Collectors.toSet());
+            .map(UUIDEntity::getUuid)
+            .collect(Collectors.toSet());
         if (allAvailableJoinTasks.isEmpty()) {
             throw new IllegalArgumentException("Task by=[%s] don't have a path to task=[%s]".formatted(
-                    currentTaskId, joinTaskName
+                currentTaskId, joinTaskName
             ));
         }
 
         List<TaskMessageEntity> joinMessagesForBranch = taskMessageRepository.findAllByTaskToJoinIdAndJoinTaskIdIn(
-                currentTaskId.getId(),
-                allAvailableJoinTasks
+            currentTaskId.getId(),
+            allAvailableJoinTasks
         );
         Collection<JoinTaskMessage<T>> existedJoinTaskMessages = readMessage(
-                joinMessagesForBranch,
-                joinTaskName,
-                joinTaskDef.getInputMessageType()
+            joinMessagesForBranch,
+            joinTaskName,
+            joinTaskDef.getInputMessageType()
         );
 
         Set<UUID> existedJoinTaskIds = joinMessagesForBranch.stream()
-                .map(TaskMessageEntity::getJoinTaskId)
-                .collect(Collectors.toSet());
+            .map(TaskMessageEntity::getJoinTaskId)
+            .collect(Collectors.toSet());
 
-        Set<UUID> newJoinTaskMessageIds = Sets.newHashSet(Sets.difference(allAvailableJoinTasks, existedJoinTaskIds));
+        Set<UUID> newJoinTaskMessageIds = SetUtils.difference(allAvailableJoinTasks, existedJoinTaskIds);
         List<JoinTaskMessage<T>> newJoinTaskMessages = newJoinTaskMessageIds.stream()
-                .map(joinTaskId -> JoinTaskMessage.<T>builder()
-                        .taskId(TaskId.builder()
-                                .id(joinTaskId)
-                                .taskName(joinTaskDef.getTaskName())
-                                .appName(appName)
-                                .build())
-                        .build()
-                ).toList();
+            .map(joinTaskId -> JoinTaskMessage.<T>builder()
+                .taskId(TaskId.builder()
+                    .id(joinTaskId)
+                    .taskName(joinTaskDef.getTaskName())
+                    .appName(appName)
+                    .build())
+                .build()
+            ).toList();
 
-        return ImmutableList.<JoinTaskMessage<T>>builder()
-                .addAll(existedJoinTaskMessages)
-                .addAll(newJoinTaskMessages)
-                .build();
+        return Stream.of(existedJoinTaskMessages, newJoinTaskMessages)
+            .flatMap(Collection::stream)
+            .toList();
     }
 
     @Override
@@ -140,8 +139,8 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
         UUID joinTaskId = joinTaskMessage.getTaskId().getId();
 
         Optional<TaskMessageEntity> joinTaskMessageOpt = taskMessageRepository.findByTaskToJoinIdAndJoinTaskId(
-                taskToJoinId,
-                joinTaskId
+            taskToJoinId,
+            joinTaskId
         );
         TaskMessageEntity taskMessageEntity;
         if (joinTaskMessageOpt.isPresent()) {
@@ -150,26 +149,26 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
             boolean hasJoinTask = taskLinkRepository.checkBranchHasJoinTask(taskToJoinId, joinTaskId);
             if (!hasJoinTask) {
                 throw new IllegalArgumentException("Task by=[%s] don't have a path to task=[%s]".formatted(
-                        taskToJoinId, joinTaskId
+                    taskToJoinId, joinTaskId
                 ));
             }
             taskMessageEntity = TaskMessageEntity.builder()
-                    .joinTaskId(joinTaskId)
-                    .taskToJoinId(taskToJoinId)
-                    .build();
+                .joinTaskId(joinTaskId)
+                .taskToJoinId(taskToJoinId)
+                .build();
         }
 
         byte[] bytes = taskSerializer.writeValue(joinTaskMessage.getMessage());
         taskMessageEntity = taskMessageEntity.toBuilder()
-                .message(bytes)
-                .build();
+            .message(bytes)
+            .build();
         taskMessageRepository.save(taskMessageEntity);
     }
 
     private <T> Collection<JoinTaskMessage<T>> readMessage(List<TaskMessageEntity> joinMessagesForBranch,
                                                            String taskName,
                                                            JavaType inputMessageType) throws IOException {
-        List<JoinTaskMessage<T>> result = Lists.newArrayList();
+        List<JoinTaskMessage<T>> result = new ArrayList<>();
         for (TaskMessageEntity taskMessageEntity : joinMessagesForBranch) {
             result.add(readMessage(taskMessageEntity, taskName, inputMessageType));
         }
@@ -181,19 +180,19 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
                                                JavaType inputMessageType) throws IOException {
         T message = taskSerializer.readValue(taskMessageEntity.getMessage(), inputMessageType);
         return JoinTaskMessage.<T>builder()
-                .message(message)
-                .taskId(TaskId.builder()
-                        .id(taskMessageEntity.getJoinTaskId())
-                        .taskName(taskName)
-                        .appName(commonSettings.getAppName())
-                        .build())
-                .build();
+            .message(message)
+            .taskId(TaskId.builder()
+                .id(taskMessageEntity.getJoinTaskId())
+                .taskName(taskName)
+                .appName(commonSettings.getAppName())
+                .build())
+            .build();
     }
 
     private byte[] writeMessage(List<byte[]> rawJoinedMessages) throws IOException {
         return taskSerializer.writeValue(JoinTaskMessageContainer.builder()
-                .rawMessages(rawJoinedMessages)
-                .build()
+            .rawMessages(rawJoinedMessages)
+            .build()
         );
     }
 
@@ -210,8 +209,8 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
     @Override
     public List<UUID> getReadyToPlanJoinTasks(int batch) {
         return taskLinkRepository.getReadyToPlanJoinTasks(batch).stream()
-                .map(UUIDEntity::getUuid)
-                .toList();
+            .map(UUIDEntity::getUuid)
+            .toList();
     }
 
     @Override
@@ -221,27 +220,27 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
         taskLinkRepository.deleteAllByJoinTaskIdIn(JdbcTools.UUIDsToStringArray(joinTaskExecutionIds));
 
         Map<UUID, List<TaskMessageEntity>> messagesByJoinTaskId = allMessages.stream()
-                .collect(Collectors.groupingBy(
-                        TaskMessageEntity::getJoinTaskId,
-                        Collectors.mapping(
-                                Function.identity(),
-                                Collectors.toList()
-                        )
-                ));
+            .collect(Collectors.groupingBy(
+                TaskMessageEntity::getJoinTaskId,
+                Collectors.mapping(
+                    Function.identity(),
+                    Collectors.toList()
+                )
+            ));
         return joinTaskExecutionIds.stream()
-                .map(joinTaskId -> joinMessages(
-                        joinTaskId,
-                        messagesByJoinTaskId.getOrDefault(joinTaskId, List.of())
-                ))
-                .toList();
+            .map(joinTaskId -> joinMessages(
+                joinTaskId,
+                messagesByJoinTaskId.getOrDefault(joinTaskId, List.of())
+            ))
+            .toList();
     }
 
     //don't deserialize messages in order to join them, because joinPlanner
     //can have not class of message locally
     private JoinTaskExecution joinMessages(UUID joinTaskId, List<TaskMessageEntity> joinTaskLinkEntities) {
         List<byte[]> rawJoinedMessages = joinTaskLinkEntities.stream()
-                .map(TaskMessageEntity::getMessage)
-                .collect(Collectors.toList());
+            .map(TaskMessageEntity::getMessage)
+            .collect(Collectors.toList());
         byte[] joinedMessagesByte = null;
         try {
             joinedMessagesByte = writeMessage(rawJoinedMessages);
@@ -250,8 +249,8 @@ public class TaskLinkManagerImpl implements TaskLinkManager {
         }
 
         return JoinTaskExecution.builder()
-                .taskId(joinTaskId)
-                .joinedMessage(joinedMessagesByte)
-                .build();
+            .taskId(joinTaskId)
+            .joinedMessage(joinedMessagesByte)
+            .build();
     }
 }

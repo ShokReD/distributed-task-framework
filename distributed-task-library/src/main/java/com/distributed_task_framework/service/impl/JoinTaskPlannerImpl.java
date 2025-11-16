@@ -1,12 +1,7 @@
 package com.distributed_task_framework.service.impl;
 
-import com.distributed_task_framework.model.JoinTaskExecution;
-import com.google.common.collect.Sets;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.PlatformTransactionManager;
 import com.distributed_task_framework.exception.OptimisticLockException;
+import com.distributed_task_framework.model.JoinTaskExecution;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.repository.PlannerRepository;
 import com.distributed_task_framework.persistence.repository.TaskRepository;
@@ -15,6 +10,11 @@ import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.service.internal.PlannerGroups;
 import com.distributed_task_framework.service.internal.TaskLinkManager;
 import com.distributed_task_framework.settings.CommonSettings;
+import com.distributed_task_framework.utils.SetUtils;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -82,7 +82,7 @@ public class JoinTaskPlannerImpl extends AbstractPlannerImpl {
     @Override
     int processInLoop() {
         List<UUID> joinTaskExecutionIds = taskLinkManager.getReadyToPlanJoinTasks(
-                commonSettings.getPlannerSettings().getBatchSize()
+            commonSettings.getPlannerSettings().getBatchSize()
         );
         if (joinTaskExecutionIds.isEmpty()) {
             return 0;
@@ -91,34 +91,34 @@ public class JoinTaskPlannerImpl extends AbstractPlannerImpl {
 
         List<JoinTaskExecution> joinTasksToPlan = taskLinkManager.prepareJoinTaskToPlan(joinTaskExecutionIds);
         Map<UUID, JoinTaskExecution> joinTaskExecutionsMap = joinTasksToPlan.stream()
-                .collect(Collectors.toMap(
-                        JoinTaskExecution::getTaskId,
-                        Function.identity()
-                ));
+            .collect(Collectors.toMap(
+                JoinTaskExecution::getTaskId,
+                Function.identity()
+            ));
 
         LocalDateTime now = LocalDateTime.now(clock);
         joinTasks = joinTasks.stream()
-                .map(taskEntity -> taskEntity.toBuilder()
-                        .notToPlan(false)
-                        .executionDateUtc(now)
-                        .joinMessageBytes(joinTaskExecutionsMap.get(taskEntity.getId()).getJoinedMessage())
-                        .build())
-                .toList();
+            .map(taskEntity -> taskEntity.toBuilder()
+                .notToPlan(false)
+                .executionDateUtc(now)
+                .joinMessageBytes(joinTaskExecutionsMap.get(taskEntity.getId()).getJoinedMessage())
+                .build())
+            .toList();
         Collection<TaskEntity> updatedJoinTasks = taskRepository.saveAll(joinTasks);
 
         //opt lock check, can throw exception when user cancel/reschedule join task (very rarer case)
         if (updatedJoinTasks.size() != joinTasks.size()) {
             Set<UUID> updatedJoinTaskIds = updatedJoinTasks.stream()
-                    .map(TaskEntity::getId)
-                    .collect(Collectors.toSet());
-            Set<UUID> concurrentChangedTaskIds = Sets.newHashSet(Sets.difference(
-                    joinTaskExecutionsMap.keySet(),
-                    updatedJoinTaskIds)
+                .map(TaskEntity::getId)
+                .collect(Collectors.toSet());
+            Set<UUID> concurrentChangedTaskIds = SetUtils.difference(
+                joinTaskExecutionsMap.keySet(),
+                updatedJoinTaskIds
             );
             statHelper.updateConcurrentChanged(updatedJoinTasks, concurrentChangedTaskIds);
             throw new OptimisticLockException(
-                    "join tasks has been changed concurrently: [%s]".formatted(concurrentChangedTaskIds),
-                    TaskEntity.class
+                "join tasks has been changed concurrently: [%s]".formatted(concurrentChangedTaskIds),
+                TaskEntity.class
             );
         }
         statHelper.updatePlannedTasks(updatedJoinTasks);

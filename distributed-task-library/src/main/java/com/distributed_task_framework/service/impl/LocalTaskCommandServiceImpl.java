@@ -28,7 +28,6 @@ import com.distributed_task_framework.service.internal.TaskRegistryService;
 import com.distributed_task_framework.service.internal.WorkerContextManager;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.settings.TaskSettings;
-import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +38,7 @@ import org.springframework.util.StringUtils;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -488,8 +488,8 @@ public class LocalTaskCommandServiceImpl extends AbstractTaskCommandWithDetector
             )
             .collect(Collectors.toList());
 
-        List<TaskEntity> tasksAsCommand = Lists.newArrayList();
-        List<TaskEntity> tasksToSave = Lists.newArrayList();
+        List<TaskEntity> tasksAsCommand = new ArrayList<>();
+        List<TaskEntity> tasksToSave = new ArrayList<>();
 
         Optional<WorkerContext> currentContext = workerContextManager.getCurrentContext();
         boolean isInContext = currentContext.isPresent();
@@ -612,8 +612,8 @@ public class LocalTaskCommandServiceImpl extends AbstractTaskCommandWithDetector
                 .toList();
         }
 
-        List<TaskEntity> tasksAsCommand = Lists.newArrayList();
-        List<TaskEntity> tasksToDelete = Lists.newArrayList();
+        List<TaskEntity> tasksAsCommand = new ArrayList<>();
+        List<TaskEntity> tasksToDelete = new ArrayList<>();
         currentTaskEntityOpt.ifPresent(taskId -> {
             WorkerContext workerContext = currentContextOpt.get();
             var currentTaskId = workerContext.getCurrentTaskId();

@@ -1,13 +1,13 @@
 package com.distributed_task_framework.service.impl.local_commands;
 
 import com.distributed_task_framework.model.TaskId;
-import com.google.common.collect.ImmutableList;
-import lombok.Value;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.service.internal.BatcheableLocalCommand;
 import com.distributed_task_framework.service.internal.InternalTaskCommandService;
-
 import jakarta.annotation.Nullable;
+import lombok.Value;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Value(staticConstructor = "of")
@@ -34,10 +34,6 @@ public class SaveCommand implements BatcheableLocalCommand<BatchSaveCommand> {
         if (batch == null) {
             return BatchSaveCommand.of(List.of(taskEntity));
         }
-        return BatchSaveCommand.of(ImmutableList.<TaskEntity>builder()
-                .addAll(batch.getTaskEntities())
-                .add(taskEntity)
-                .build()
-        );
+        return BatchSaveCommand.of(new ArrayList<>(batch.getTaskEntities()) {{ add(taskEntity); }});
     }
 }

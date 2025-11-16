@@ -26,9 +26,8 @@ import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.task.Task;
 import com.distributed_task_framework.utils.CommandHelper;
+import com.distributed_task_framework.utils.SetUtils;
 import com.fasterxml.jackson.databind.JavaType;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
@@ -38,13 +37,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -119,7 +118,7 @@ public class LocalAtLeastOnceWorker implements TaskWorker {
             taskEntity = taskEntity.toBuilder()
                 .failures(currentFailures)
                 .build();
-            Optional<LocalDateTime> nextTryDateTime = taskSettings.getRetry().nextRetry(currentFailures, clock);
+            Optional<LocalDateTime> nextTryDateTime = taskSettings.getRetry().next(currentFailures, clock);
 
             boolean hasToInterruptRetrying = false;
             try {
@@ -236,8 +235,18 @@ public class LocalAtLeastOnceWorker implements TaskWorker {
             || handleBatchUpdateException(taskEntity, throwable);
     }
 
+    private <E extends Exception> E throwableOfType(Throwable throwable, Class<E> requiredType) {
+        if (throwable == null) {
+            return null;
+        }
+        if (requiredType.isAssignableFrom(throwable.getClass())) {
+            return requiredType.cast(throwable);
+        }
+        return throwableOfType(throwable.getCause(), requiredType);
+    }
+
     private boolean handleOptLockException(TaskEntity taskEntity, Throwable throwable) {
-        OptimisticLockException optimisticLockException = ExceptionUtils.throwableOfType(
+        OptimisticLockException optimisticLockException = throwableOfType(
             throwable,
             OptimisticLockException.class
         );
@@ -253,7 +262,7 @@ public class LocalAtLeastOnceWorker implements TaskWorker {
     }
 
     private boolean handleBatchUpdateException(TaskEntity taskEntity, Throwable throwable) {
-        BatchUpdateException batchUpdateException = ExceptionUtils.throwableOfType(
+        BatchUpdateException batchUpdateException = throwableOfType(
             throwable,
             BatchUpdateException.class
         );
@@ -403,7 +412,7 @@ public class LocalAtLeastOnceWorker implements TaskWorker {
         }
 
         Set<UUID> childrenIds = currentContext.getAllChildrenIds();
-        childrenIds = Sets.newHashSet(Sets.difference(childrenIds, currentContext.getDropJoinTasksIds()));
+        childrenIds = SetUtils.difference(childrenIds, currentContext.getDropJoinTasksIds());
         if (childrenIds.isEmpty()) {
             log.debug("handleLinks(): taskId=[{}] has only dropJoin children, marked links as completed", taskId);
             taskLinkManager.markLinksAsCompleted(currentTaskId);
@@ -425,7 +434,7 @@ public class LocalAtLeastOnceWorker implements TaskWorker {
             taskEntity.getJoinMessageBytes(),
             JoinTaskMessageContainer.class
         );
-        List<T> result = Lists.newArrayList();
+        List<T> result = new ArrayList<>();
         for (byte[] message : joinTaskMessageContainer.getRawMessages()) {
             result.add(taskSerializer.readValue(message, inputMessageType));
         }

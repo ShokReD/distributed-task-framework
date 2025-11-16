@@ -4,8 +4,6 @@ import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.model.NodeTaskActivity;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -14,12 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,7 +36,7 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
         //10 * 2 = 20 tasks
         //10 * 2 = 20 workers
         var workerId = TaskPopulateAndVerify.getNode(0);
-        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.withWorker(2, workerId)
             )
         );
@@ -49,7 +49,7 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
         //deleted task have not been taken into account
         taskPopulateAndVerify.populate(0, 20, VirtualQueue.DELETED, knownPopulationSpecs);
 
-        var unknownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var unknownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(10, 20), TaskPopulateAndVerify.GenerationSpec.withAutoAssignedWorker(2)
             )
         );
@@ -107,7 +107,7 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
 
     private Set<Partition> prepareDataToPlanInReadyQueue() {
         //5 * 2 = 10 unique afg+taskName
-        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 5), TaskPopulateAndVerify.GenerationSpec.of(2)
             )
         );
@@ -116,7 +116,7 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
 
 
         //5 unique afg+taskName
-        var knownPopulationSpecsWithShortSize = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var knownPopulationSpecsWithShortSize = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(5, 6), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
                 Range.closedOpen(6, 10), TaskPopulateAndVerify.GenerationSpec.one()
             )
@@ -124,9 +124,9 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
         //50/5 = 10 tasks for each affinityGroup+taskName
         taskPopulateAndVerify.populate(0, 50, VirtualQueue.READY, knownPopulationSpecsWithShortSize);
 
-        return ImmutableSet.<Partition>builder()
-            .addAll(toPartitions(knownPopulationSpecs))
-            .addAll(toPartitions(knownPopulationSpecsWithShortSize))
-            .build();
+        return Stream.of(knownPopulationSpecs, knownPopulationSpecsWithShortSize)
+            .map(this::toPartitions)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toUnmodifiableSet());
     }
 }

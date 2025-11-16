@@ -9,11 +9,11 @@ import com.distributed_task_framework.settings.OffRetry;
 import com.distributed_task_framework.settings.Retry;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.google.common.collect.ImmutableRangeMap;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -742,7 +742,7 @@ public class DistributedTaskPropertiesMapper {
      */
     public DistributedTaskProperties.DeliveryManager map(CommonSettings.DeliveryManagerSettings deliveryManagerSettings) {
         var deliveryManager = mapInternal(deliveryManagerSettings);
-        Map<Integer, Integer> manageDelay = Maps.newHashMap();
+        Map<Integer, Integer> manageDelay = new HashMap<>();
         deliveryManagerSettings.getManageDelay().asMapOfRanges()
             .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
         return deliveryManager.toBuilder()
@@ -777,7 +777,7 @@ public class DistributedTaskPropertiesMapper {
      */
     public DistributedTaskProperties.WorkerManager map(CommonSettings.WorkerManagerSettings workerManagerSettings) {
         var workerManager = mapInternal(workerManagerSettings);
-        Map<Integer, Integer> manageDelay = Maps.newHashMap();
+        Map<Integer, Integer> manageDelay = new HashMap<>();
         workerManagerSettings.getManageDelay().asMapOfRanges()
             .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
         return workerManager.toBuilder()
@@ -830,7 +830,7 @@ public class DistributedTaskPropertiesMapper {
      */
     public DistributedTaskProperties.Planner map(CommonSettings.PlannerSettings defaultPlannerSettings) {
         DistributedTaskProperties.Planner result = mapInternal(defaultPlannerSettings);
-        Map<Integer, Integer> pollingDelay = Maps.newHashMap();
+        Map<Integer, Integer> pollingDelay = new HashMap<>();
         defaultPlannerSettings.getPollingDelay().asMapOfRanges()
             .forEach((range, limit) -> pollingDelay.put(range.upperEndpoint(), limit));
         return result.toBuilder()

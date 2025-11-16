@@ -9,8 +9,6 @@ import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.persistence.repository.VirtualQueueManagerPlannerRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -22,8 +20,10 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -75,13 +75,13 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
     //SUPPOSED USED INDEXES: _____dtf_tasks_vq_cdu_idx
     @Override
     public Set<AffinityGroupWrapper> affinityGroupsInNewVirtualQueue(LocalDateTime from, Duration overlap) {
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(
-                SELECT_AFFINITY_GROUPS_IN_VIRTUAL_QUEUE,
-                new MapSqlParameterSource()
-                    .addValue("from", from, Types.TIMESTAMP)
-                    .addValue("timeOverlapSec", overlap.getSeconds(), Types.BIGINT),
-                AFFINITY_GROUP_WRAPPER_BEAN_PROPERTY_ROW_MAPPER
-            )
+        return new HashSet<>(namedParameterJdbcTemplate.query(
+            SELECT_AFFINITY_GROUPS_IN_VIRTUAL_QUEUE,
+            new MapSqlParameterSource()
+                .addValue("from", from, Types.TIMESTAMP)
+                .addValue("timeOverlapSec", overlap.getSeconds(), Types.BIGINT),
+            AFFINITY_GROUP_WRAPPER_BEAN_PROPERTY_ROW_MAPPER
+        )
         );
     }
 
@@ -117,11 +117,11 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
     public Set<AffinityGroupStat> affinityGroupInNewVirtualQueueStat(Set<AffinityGroupWrapper> knownAffinityGroups,
                                                                      int affinityGroupLimit) {
         if (knownAffinityGroups.isEmpty()) {
-            return Sets.newHashSet();
+            return new HashSet<>();
         }
         String tablePrefix = "afg_";
 
-        List<AffinityGroupWrapper> knownAffinityGroupLst = Lists.newArrayList(knownAffinityGroups);
+        List<AffinityGroupWrapper> knownAffinityGroupLst = new ArrayList<>(knownAffinityGroups);
         String affinityGroupTables = IntStream.range(0, knownAffinityGroupLst.size())
             .mapToObj(i -> AFFINITY_GROUP_TABLE_SUB_SELECT_TEMPLATE
                 .replace("{TABLE_NAME}", tablePrefix + i)
@@ -140,11 +140,11 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
 
         log.debug("affinityGroupInNewVirtualQueueStat(): query=[{}]", query);
 
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(
-                query,
-                new MapSqlParameterSource().addValue("limit", affinityGroupLimit, Types.BIGINT),
-                AFFINITY_GROUP_STAT_MAPPER
-            )
+        return new HashSet<>(namedParameterJdbcTemplate.query(
+            query,
+            new MapSqlParameterSource().addValue("limit", affinityGroupLimit, Types.BIGINT),
+            AFFINITY_GROUP_STAT_MAPPER
+        )
         );
     }
 
@@ -275,7 +275,7 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
         }
         final String tablePrefix = "new_raw_portion_";
 
-        List<AffinityGroupStat> affinityGroupStatLst = Lists.newArrayList(affinityGroupStats);
+        List<AffinityGroupStat> affinityGroupStatLst = new ArrayList<>(affinityGroupStats);
         String affinityGroupTables = IntStream.range(0, affinityGroupStatLst.size())
             .mapToObj(i -> {
                     var affinityGroupStat = affinityGroupStatLst.get(i);
@@ -298,7 +298,7 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
 
         log.debug("moveNewToReady(): query=[{}]", query);
 
-        return Lists.newArrayList(namedParameterJdbcTemplate.query(query, SHORT_TASK_ROW_MAPPER));
+        return new ArrayList<>(namedParameterJdbcTemplate.query(query, SHORT_TASK_ROW_MAPPER));
     }
 
 
@@ -382,13 +382,13 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
     public List<ShortTaskEntity> moveParkedToReady(Collection<IdVersionEntity> idVersionEntities) {
         List<UUID> ids = idVersionEntities.stream().map(IdVersionEntity::getId).toList();
         List<Long> versions = idVersionEntities.stream().map(IdVersionEntity::getVersion).toList();
-        return Lists.newArrayList(namedParameterJdbcTemplate.query(
-                MOVE_PARKED_TO_READY,
-                new MapSqlParameterSource()
-                    .addValue(IdVersionEntity.Fields.id, JdbcTools.UUIDsToStringArray(ids), Types.ARRAY)
-                    .addValue(IdVersionEntity.Fields.version, JdbcTools.toLongArray(versions), Types.ARRAY),
-                SHORT_TASK_ROW_MAPPER
-            )
+        return new ArrayList<>(namedParameterJdbcTemplate.query(
+            MOVE_PARKED_TO_READY,
+            new MapSqlParameterSource()
+                .addValue(IdVersionEntity.Fields.id, JdbcTools.UUIDsToStringArray(ids), Types.ARRAY)
+                .addValue(IdVersionEntity.Fields.version, JdbcTools.toLongArray(versions), Types.ARRAY),
+            SHORT_TASK_ROW_MAPPER
+        )
         );
     }
 
@@ -403,11 +403,11 @@ public class VirtualQueueManagerPlannerRepositoryImpl implements VirtualQueueMan
 
     @Override
     public Set<IdVersionEntity> readyToHardDelete(int batchSize) {
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(
-                READY_TO_HARD_DELETE,
-                new MapSqlParameterSource().addValue("limit", batchSize, Types.BIGINT),
-                IdVersionEntity.ID_VERSION_ROW_MAPPER
-            )
+        return new HashSet<>(namedParameterJdbcTemplate.query(
+            READY_TO_HARD_DELETE,
+            new MapSqlParameterSource().addValue("limit", batchSize, Types.BIGINT),
+            IdVersionEntity.ID_VERSION_ROW_MAPPER
+        )
         );
     }
 

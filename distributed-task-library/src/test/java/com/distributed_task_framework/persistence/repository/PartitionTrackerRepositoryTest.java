@@ -3,7 +3,6 @@ package com.distributed_task_framework.persistence.repository;
 import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -13,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +27,7 @@ class PartitionTrackerRepositoryTest extends BaseRepositoryTest {
     @Test
     void shouldReturnActivePartitions() {
         //when
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.withoutAffinity(2),
                 Range.closedOpen(1, 3), TaskPopulateAndVerify.GenerationSpec.of(2)
             )
@@ -72,7 +72,7 @@ class PartitionTrackerRepositoryTest extends BaseRepositoryTest {
     @Test
     void shouldFilterInReadyVirtualQueue() {
         //when
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
                 Range.closedOpen(2, 3), TaskPopulateAndVerify.GenerationSpec.one()
             )

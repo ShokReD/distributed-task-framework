@@ -6,24 +6,25 @@ import com.distributed_task_framework.model.NodeCapacity;
 import com.distributed_task_framework.model.NodeTaskActivity;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.model.PartitionStat;
+import com.distributed_task_framework.model.TaskNameAndNode;
 import com.distributed_task_framework.settings.CommonSettings;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Table;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -96,7 +97,7 @@ class TaskRouterTest {
                 BatchRouteMap.builder()
                     .partitionLimits(Map.of(partition(AFG_1, TASK_NAME_1), 19))
                     .taskNameNodeQuota(all(
-                            ImmutableTable.of(TASK_NAME_1, NODES.get(0), 1),
+                            Map.of(new TaskNameAndNode(TASK_NAME_1, NODES.get(0)), 1),
                             fairQuotaDistribution(TASK_NAME_1, 2, Set.of(NODES.get(0)))
                         )
                     )
@@ -129,7 +130,7 @@ class TaskRouterTest {
             ExpectedOutputData.withoutInternalState(
                 BatchRouteMap.builder()
                     .partitionLimits(Map.of(partition(AFG_1, TASK_NAME_1), 1))
-                    .taskNameNodeQuota(ImmutableTable.of(TASK_NAME_1, NODES.get(5), 1))
+                    .taskNameNodeQuota(Map.of(new TaskNameAndNode(TASK_NAME_1, NODES.get(5)), 1))
                     .build()
             )
         );
@@ -327,41 +328,43 @@ class TaskRouterTest {
 
     private static Map<UUID, Long> updatedNumber(long... updatedNumber) {
         assertThat(NODES.size()).isEqualTo(updatedNumber.length);
-        var result = Maps.<UUID, Long>newHashMap();
+        var result = new HashMap<UUID, Long>();
         IntStream.range(0, updatedNumber.length)
             .forEach(i -> result.put(NODES.get(i), updatedNumber[i]));
         return result;
     }
 
-    private static Table<String, UUID, Integer> all(Table<String, UUID, Integer>... tables) {
-        var builder = ImmutableTable.<String, UUID, Integer>builder();
-        Arrays.stream(tables).forEach(builder::putAll);
-        return builder.build();
+    @SafeVarargs
+    private static Map<TaskNameAndNode, Integer> all(Map<TaskNameAndNode, Integer>... tables) {
+        return Arrays.stream(tables)
+            .map(Map::entrySet)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    private static Table<String, UUID, Integer> fairQuotaDistribution(String taskName, int quota) {
+    private static Map<TaskNameAndNode, Integer> fairQuotaDistribution(String taskName, int quota) {
         return fairQuotaDistribution(taskName, quota, Collections.emptySet());
     }
 
-    private static Table<String, UUID, Integer> fairQuotaDistribution(String taskName,
-                                                                      int quota,
-                                                                      Set<UUID> excludedNodes) {
-        ImmutableTable.Builder<String, UUID, Integer> builder = ImmutableTable.builder();
+    private static Map<TaskNameAndNode, Integer> fairQuotaDistribution(String taskName,
+                                                                       int quota,
+                                                                       Set<UUID> excludedNodes) {
+        var result = new HashMap<TaskNameAndNode, Integer>();
         NODES.stream()
             .filter(nodeId -> !excludedNodes.contains(nodeId))
-            .forEach(nodeId -> builder.put(taskName, nodeId, quota));
-        return builder.build();
+            .forEach(nodeId -> result.put(new TaskNameAndNode(taskName, nodeId), quota));
+        return result;
     }
 
-    private static Table<String, UUID, Integer> singleQuota(String taskName, UUID node, int quota) {
-        return ImmutableTable.of(taskName, node, quota);
+    private static Map<TaskNameAndNode, Integer> singleQuota(String taskName, UUID node, int quota) {
+        return Map.of(new TaskNameAndNode(taskName, node), quota);
     }
 
-    @SuppressWarnings("unchecked")
+    @SafeVarargs
     private static <T> List<T> all(List<T>... collections) {
-        var builder = ImmutableList.<T>builder();
-        Arrays.stream(collections).forEach(builder::addAll);
-        return builder.build();
+        return Arrays.stream(collections)
+            .flatMap(Collection::stream)
+            .toList();
     }
 
     private static List<NodeTaskActivity> fairActivityDistribution(String taskName, int number) {
@@ -369,7 +372,7 @@ class TaskRouterTest {
     }
 
     private static List<NodeTaskActivity> fairActivityDistribution(String taskName, int number, Set<UUID> excludedNodes) {
-        var builder = ImmutableList.<NodeTaskActivity>builder();
+        var list = new ArrayList<NodeTaskActivity>();
         NODES.stream()
             .filter(nodeId -> !excludedNodes.contains(nodeId))
             .map(node -> NodeTaskActivity.builder()
@@ -377,8 +380,9 @@ class TaskRouterTest {
                 .task(taskName)
                 .number(number)
                 .build()
-            ).forEach(builder::add);
-        return builder.build();
+            )
+            .forEach(list::add);
+        return Collections.unmodifiableList(list);
     }
 
     private static Partition partition(String afg, String taskName) {
@@ -425,7 +429,7 @@ class TaskRouterTest {
     ) {
         public static InputTestData withoutState(BatchRouteRequest batchRouteRequest) {
             return new InputTestData(
-                Maps.newHashMap(),
+                new HashMap<>(),
                 null,
                 batchRouteRequest
             );
@@ -443,7 +447,7 @@ class TaskRouterTest {
         public static InputTestData withPartitionCursor(Partition cursor,
                                                         BatchRouteRequest batchRouteRequest) {
             return new InputTestData(
-                Maps.newHashMap(),
+                new HashMap<>(),
                 cursor,
                 batchRouteRequest
             );

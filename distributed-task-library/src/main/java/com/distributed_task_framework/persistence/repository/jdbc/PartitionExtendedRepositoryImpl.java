@@ -3,8 +3,6 @@ package com.distributed_task_framework.persistence.repository.jdbc;
 import com.distributed_task_framework.persistence.entity.PartitionEntity;
 import com.distributed_task_framework.persistence.repository.PartitionExtendedRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,7 +11,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,7 +48,7 @@ public class PartitionExtendedRepositoryImpl implements PartitionExtendedReposit
             .map(this::toParameterSource)
             .toArray(SqlParameterSource[]::new);
         int[] affectedRows = namedParameterJdbcTemplate.batchUpdate(SAVE_OR_UPDATE_BATCH, batchArguments);
-        return Sets.newHashSet(JdbcTools.filterAffected(Lists.newArrayList(taskNameEntities), affectedRows));
+        return new HashSet<>(JdbcTools.filterAffected(new ArrayList<>(taskNameEntities), affectedRows));
     }
 
     private PartitionEntity prepareToSave(PartitionEntity partitionEntity) {

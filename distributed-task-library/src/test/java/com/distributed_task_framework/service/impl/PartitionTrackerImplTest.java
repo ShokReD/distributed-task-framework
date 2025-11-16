@@ -6,8 +6,6 @@ import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.persistence.entity.PartitionEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.service.internal.PartitionTracker;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -19,7 +17,9 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static com.distributed_task_framework.TaskPopulateAndVerify.GenerationSpec.oneWithAffinityGroupAndTaskName;
 import static com.distributed_task_framework.TaskPopulateAndVerify.GenerationSpec.oneWithTaskNameAndWithoutAffinity;
@@ -40,7 +40,7 @@ class PartitionTrackerImplTest extends BaseSpringIntegrationTest {
     @Test
     void shouldReinit() {
         //when
-        var spec = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var spec = taskPopulateAndVerify.makePopulationSpec(Map.of(
             Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one())
         );
         var alreadyInReady = taskPopulateAndVerify.populate(0, 5, VirtualQueue.READY, spec);
@@ -93,7 +93,7 @@ class PartitionTrackerImplTest extends BaseSpringIntegrationTest {
         setFixedTime(100);
         long currentTimeBucket = 100 / 5;
 
-        var spec = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var spec = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 1), oneWithTaskNameAndWithoutAffinity("exist_in_ready_queue"),
                 Range.closedOpen(1, 2), oneWithAffinityGroupAndTaskName("exist_in_ready_queue", "exist_in_ready_queue")
             )
@@ -123,10 +123,9 @@ class PartitionTrackerImplTest extends BaseSpringIntegrationTest {
         partitionTracker.gcIfNecessary();
 
         //verify
-        var expectedPartitions = ImmutableList.<PartitionEntity>builder()
-            .addAll(expectedToRemainedFromActiveQueue)
-            .addAll(expectedBeRemained)
-            .build();
+        var expectedPartitions = Stream.of(expectedToRemainedFromActiveQueue, expectedBeRemained)
+            .flatMap(Collection::stream)
+            .toList();
         verifyRegisteredPartition(partitionMapper.fromEntities(expectedPartitions));
     }
 
@@ -158,10 +157,9 @@ class PartitionTrackerImplTest extends BaseSpringIntegrationTest {
         partitionTracker.compactIfNecessary();
 
         //verify
-        var expectedPartitions = ImmutableList.<PartitionEntity>builder()
-            .addAll(expectedToBeRemained)
-            .addAll(expectedBeDeleted)
-            .build();
+        var expectedPartitions = Stream.of(expectedToBeRemained, expectedBeDeleted)
+            .flatMap(Collection::stream)
+            .toList();
         verifyRegisteredPartition(partitionMapper.fromEntities(expectedPartitions));
     }
 

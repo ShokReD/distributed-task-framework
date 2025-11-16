@@ -16,8 +16,7 @@ import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.service.internal.PartitionTracker;
 import com.distributed_task_framework.service.internal.PlannerGroups;
 import com.distributed_task_framework.settings.CommonSettings;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.distributed_task_framework.utils.SetUtils;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import lombok.AccessLevel;
@@ -31,6 +30,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +52,7 @@ public class VirtualQueueManagerPlannerImpl extends AbstractPlannerImpl implemen
     TaskRepository taskRepository;
     PartitionTracker partitionTracker;
     TaskMapper taskMapper;
-    Set<AffinityGroupWrapper> affinityGroupsInNew = Sets.newHashSet();
+    Set<AffinityGroupWrapper> affinityGroupsInNew = new HashSet<>();
     AtomicReference<LocalDateTime> lastScanAffinityGroupsDateTime = new AtomicReference<>(LocalDateTime.MIN);
     VirtualQueueStatHelper virtualQueueStatHelper;
     List<Tag> commonTags;
@@ -166,7 +167,7 @@ public class VirtualQueueManagerPlannerImpl extends AbstractPlannerImpl implemen
     int processInLoop() {
         updateAffinityGroupsInNewVirtualQueue();
 
-        Set<Partition> activePartitions = Sets.newHashSet();
+        Set<Partition> activePartitions = new HashSet<>();
         int movedTasks = processNewQueue(activePartitions);
         movedTasks += processDeletedQueue(activePartitions);
 
@@ -250,7 +251,7 @@ public class VirtualQueueManagerPlannerImpl extends AbstractPlannerImpl implemen
         var deletedTaskIdVersions = Objects.requireNonNull(deleteByIdVersionTime.recordCallable(
             () -> taskRepository.deleteByIdVersion(sort(taskIdVersions)))
         );
-        var conflictedTaskIdVersions = Sets.difference(taskIdVersions, Sets.newHashSet(deletedTaskIdVersions));
+        var conflictedTaskIdVersions = SetUtils.difference(taskIdVersions, new HashSet<>(deletedTaskIdVersions));
         if (!conflictedTaskIdVersions.isEmpty()) {
             log.error("processDeletedQueue(): CONFLICTED conflictedTaskIdVersions=[{}]", conflictedTaskIdVersions);
         }
@@ -262,11 +263,11 @@ public class VirtualQueueManagerPlannerImpl extends AbstractPlannerImpl implemen
     }
 
     private Set<AffinityGroupStat> calcAffinityGroupsToMoveFromNew(Set<AffinityGroupStat> affinityGroupStats) {
-        affinityGroupStats = Sets.newHashSet(affinityGroupStats);
+        affinityGroupStats = new HashSet<>(affinityGroupStats);
         int capacity = plannerSettings.getNewBatchSize();
-        Map<String, AffinityGroupStat> affinityGroupStatsByAffinityGroup = Maps.newHashMap();
+        Map<String, AffinityGroupStat> affinityGroupStatsByAffinityGroup = new HashMap<>();
         while (capacity > 0 && !affinityGroupStats.isEmpty()) {
-            Set<AffinityGroupStat> toRemove = Sets.newHashSet();
+            Set<AffinityGroupStat> toRemove = new HashSet<>();
             for (var source : affinityGroupStats) {
                 if (capacity == 0) {
                     break;
@@ -286,7 +287,7 @@ public class VirtualQueueManagerPlannerImpl extends AbstractPlannerImpl implemen
             }
             affinityGroupStats.removeAll(toRemove);
         }
-        return Sets.newHashSet(affinityGroupStatsByAffinityGroup.values());
+        return new HashSet<>(affinityGroupStatsByAffinityGroup.values());
     }
 
     private void updateAffinityGroupsInNewVirtualQueue() {

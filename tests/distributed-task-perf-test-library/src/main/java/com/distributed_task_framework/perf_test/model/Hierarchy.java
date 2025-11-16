@@ -1,8 +1,8 @@
 package com.distributed_task_framework.perf_test.model;
 
-import com.google.common.collect.ImmutableList;
 import lombok.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,7 +13,7 @@ public class Hierarchy {
     List<String> hierarchy;
 
     private Hierarchy() {
-        this.hierarchy = ImmutableList.of();
+        this.hierarchy = List.of();
     }
 
     private Hierarchy(List<String> hierarchy) {
@@ -29,25 +29,21 @@ public class Hierarchy {
     }
 
     public Hierarchy addLevel(int level) {
-        return new Hierarchy(ImmutableList.<String>builder()
-                .addAll(hierarchy)
-                .add(String.valueOf(level))
-                .build()
-        );
+        return new Hierarchy(new ArrayList<>(hierarchy) {{
+            add(String.valueOf(level));
+        }});
     }
 
     public Hierarchy addLevel(String level) {
-        return new Hierarchy(ImmutableList.<String>builder()
-                .addAll(hierarchy)
-                .add(level)
-                .build()
-        );
+        return new Hierarchy(new ArrayList<>(hierarchy) {{
+            add(level);
+        }});
     }
 
     @Override
     public String toString() {
         return hierarchy.stream()
-                .map(Object::toString)
-                .collect(Collectors.joining(".", "[", "]"));
+            .map(Object::toString)
+            .collect(Collectors.joining(".", "[", "]"));
     }
 }

@@ -1,7 +1,5 @@
 package com.distributed_task_framework.model;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.util.Arrays;
 import java.util.EnumSet;
 
@@ -10,9 +8,9 @@ public enum Capabilities {
     VIRTUAL_QUEUE_BASE_FAIR_TASK_PLANNER_V1,
     UNKNOWN,
 
-    @VisibleForTesting
+    // visible for testing
     ___TEST_1,
-    @VisibleForTesting
+    // visible for testing
     ___TEST_2;
 
     public static Capabilities from(String capabilityStr) {

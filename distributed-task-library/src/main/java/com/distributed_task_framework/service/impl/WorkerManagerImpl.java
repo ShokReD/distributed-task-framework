@@ -3,21 +3,6 @@ package com.distributed_task_framework.service.impl;
 import com.distributed_task_framework.mapper.TaskMapper;
 import com.distributed_task_framework.model.RegisteredTask;
 import com.distributed_task_framework.model.TaskId;
-import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.ReflectionUtils;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskRepository;
 import com.distributed_task_framework.service.internal.ClusterProvider;
@@ -28,14 +13,25 @@ import com.distributed_task_framework.service.internal.TaskWorkerFactory;
 import com.distributed_task_framework.service.internal.WorkerManager;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.settings.TaskSettings;
-
+import com.distributed_task_framework.utils.ExecutorUtils;
+import com.distributed_task_framework.utils.SetUtils;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.ReflectionUtils;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,15 +45,16 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Slf4j
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class WorkerManagerImpl implements WorkerManager {
     private record ActiveTask(
-            TaskEntity taskEntity,
-            Future<Void> future,
-            AtomicBoolean isCompleted) {
+        TaskEntity taskEntity,
+        Future<Void> future,
+        AtomicBoolean isCompleted) {
     }
 
     CommonSettings commonSettings;
@@ -67,7 +64,7 @@ public class WorkerManagerImpl implements WorkerManager {
     TaskRepository taskRepository;
     TaskWorkerFactory taskWorkerFactory;
     Map<TaskId, ActiveTask> activeTasks;
-    Multimap<Instant, TaskId> expiredDateToTask;
+    Map<Instant, List<TaskId>> expiredDateToTask;
     Set<TaskId> interruptedTasks;
     ExecutorService workerManagerExecutorService;
     ExecutorService workersExecutorService;
@@ -91,30 +88,34 @@ public class WorkerManagerImpl implements WorkerManager {
         this.taskRepository = taskRepository;
         this.taskMapper = taskMapper;
         this.clock = clock;
-        this.activeTasks = Maps.newHashMap();
-        this.expiredDateToTask = MultimapBuilder.treeKeys().arrayListValues().build();
-        this.interruptedTasks = Sets.newHashSet();
+        this.activeTasks = new HashMap<>();
+        this.expiredDateToTask = new HashMap<>();
+        this.interruptedTasks = new HashSet<>();
         this.metricHelper = metricHelper;
-        this.workerManagerExecutorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder()
-                .setDaemon(false)
-                .setNameFormat("worker-mng-%d")
-                .setUncaughtExceptionHandler((t, e) -> {
-                    log.error("worker-manager(): unexpected error", e);
+        this.workerManagerExecutorService = Executors.newSingleThreadExecutor(r -> {
+            var thread = new Thread(r);
+            thread.setDaemon(false);
+            thread.setName("worker-mng-" + thread.getId());
+            thread.setUncaughtExceptionHandler((t, e) -> {
+                log.error("worker-manager(): unexpected error", e);
+                ReflectionUtils.rethrowRuntimeException(e);
+            });
+            return thread;
+        });
+
+        this.workersExecutorService = new ThreadPoolExecutor(0, workerManagerSettings.getMaxParallelTasksInNode(),
+            60L, TimeUnit.SECONDS,
+            new SynchronousQueue<>(),
+            r -> {
+                var thread = new Thread(r);
+                thread.setDaemon(false);
+                thread.setName("worker-" + thread.getId());
+                thread.setUncaughtExceptionHandler((t, e) -> {
+                    log.error("worker(): unexpected error", e);
                     ReflectionUtils.rethrowRuntimeException(e);
-                })
-                .build()
-        );
-        this.workersExecutorService = new ThreadPoolExecutor(0, this.workerManagerSettings.getMaxParallelTasksInNode(),
-                60L, TimeUnit.SECONDS,
-                new SynchronousQueue<>(),
-                new ThreadFactoryBuilder()
-                        .setDaemon(false)
-                        .setNameFormat("worker-%d")
-                        .setUncaughtExceptionHandler((t, e) -> {
-                            log.error("worker(): unexpected error", e);
-                            ReflectionUtils.rethrowRuntimeException(e);
-                        })
-                        .build()
+                });
+                return thread;
+            }
         );
     }
 
@@ -137,7 +138,7 @@ public class WorkerManagerImpl implements WorkerManager {
         log.info("shutdown(): shutdown completed");
     }
 
-    @VisibleForTesting
+    // visible for testing
     void manageLoop() {
         log.info("manageLoop(): has been started");
         while (!Thread.currentThread().isInterrupted()) {
@@ -165,7 +166,7 @@ public class WorkerManagerImpl implements WorkerManager {
         log.info("manageLoop(): has been stopped");
     }
 
-    @VisibleForTesting
+    // visible for testing
     int manageTasks() {
         cleanExpiredTasks();
         cleanFinishedTasks();
@@ -184,16 +185,16 @@ public class WorkerManagerImpl implements WorkerManager {
         }
 
         Collection<TaskEntity> newTasks = taskRepository.getNextTasks(
-                clusterProvider.nodeId(),
-                activeTasks.keySet(),
-                freeCapacity
+            clusterProvider.nodeId(),
+            activeTasks.keySet(),
+            freeCapacity
         );
-        List<TaskEntity> unknownTasks = Lists.newArrayList();
+        List<TaskEntity> unknownTasks = new ArrayList<>();
         for (TaskEntity taskEntity : newTasks) {
             log.info("startNewTasks(): task=[{}] has been started, details=[{}]", taskEntity.getId(), taskEntity);
             TaskId taskId = taskMapper.map(taskEntity, commonSettings.getAppName());
             Optional<RegisteredTask<Object>> registeredTaskOpt = taskRegistryService.getRegisteredLocalTask(
-                    taskEntity.getTaskName()
+                taskEntity.getTaskName()
             );
             if (registeredTaskOpt.isEmpty()) {
                 log.warn("startNewTasks(): planned task=[{}] has been unregistered", taskId);
@@ -203,17 +204,17 @@ public class WorkerManagerImpl implements WorkerManager {
                 RegisteredTask<Object> registeredTask = registeredTaskOpt.get();
                 TaskSettings taskSettings = registeredTask.getTaskSettings();
                 TaskWorker taskWorker = taskWorkerFactory.buildTaskWorker(
-                        taskEntity,
-                        taskSettings
+                    taskEntity,
+                    taskSettings
                 );
                 AtomicBoolean isCompleted = new AtomicBoolean(false);
                 Future<Void> taskWorkerFuture = (Future<Void>) workersExecutorService.submit(() -> {
-                            try {
-                                taskWorker.execute(taskEntity, registeredTask);
-                            } finally {
-                                isCompleted.set(true);
-                            }
+                        try {
+                            taskWorker.execute(taskEntity, registeredTask);
+                        } finally {
+                            isCompleted.set(true);
                         }
+                    }
                 );
                 activeTasks.putIfAbsent(taskId, new ActiveTask(taskEntity, taskWorkerFuture, isCompleted));
                 registerToTrackExpirationIfRequired(taskId, taskSettings);
@@ -226,44 +227,46 @@ public class WorkerManagerImpl implements WorkerManager {
 
     private void registerToTrackExpirationIfRequired(TaskId taskId, TaskSettings taskSettings) {
         if (taskSettings.getTimeout() != null
-                && Duration.ZERO.compareTo(taskSettings.getTimeout()) < 0) {
+            && Duration.ZERO.compareTo(taskSettings.getTimeout()) < 0) {
             Instant expiredDate = Instant.now(clock).plus(taskSettings.getTimeout());
-            expiredDateToTask.put(expiredDate, taskId);
+            expiredDateToTask.compute(expiredDate, (expDate, taskIds) -> {
+                var result = taskIds == null ? new ArrayList<TaskId>() : taskIds;
+                result.add(taskId);
+                return result;
+            });
             log.info("registerToTrackExpirationIfRequired(): taskId=[{}] will be expired at [{}]", taskId.getId(), expiredDate);
         }
     }
 
     private void revertUnknownTasks(List<TaskEntity> unknownTasks) {
         var unknownShortTasks = unknownTasks.stream()
-                .map(taskEntity -> taskEntity.toBuilder()
-                        .assignedWorker(null)
-                        .lastAssignedDateUtc(null)
-                        .build())
-                .map(taskMapper::mapToShort)
-                .collect(Collectors.toList());
+            .map(taskEntity -> taskEntity.toBuilder()
+                .assignedWorker(null)
+                .lastAssignedDateUtc(null)
+                .build())
+            .map(taskMapper::mapToShort)
+            .collect(Collectors.toList());
         taskRepository.updateAll(unknownShortTasks);
     }
 
     private void cleanExpiredTasks() {
         Instant now = Instant.now(clock);
         SortedSet<Instant> instants = (SortedSet<Instant>) expiredDateToTask.keySet();
-        Set<Instant> expiredInstants = Sets.newHashSet(instants.headSet(now));
+        Set<Instant> expiredInstants = new HashSet<>(instants.headSet(now));
 
         Set<TaskId> expiredTaskIds = expiredInstants.stream()
-                .flatMap(instant -> expiredDateToTask.get(instant).stream())
-                .filter(taskId -> !interruptedTasks.contains(taskId))
-                .collect(Collectors.toSet());
-        Set<TaskId> notExpiredTaskIds = Sets.newHashSet(Sets.difference(activeTasks.keySet(), expiredTaskIds));
-        Set<TaskId> canceledTaskIds = Sets.newHashSet(Sets.difference(
-                        taskRepository.filterCanceled(notExpiredTaskIds),
-                        interruptedTasks
-                )
+            .flatMap(instant -> expiredDateToTask.get(instant).stream())
+            .filter(taskId -> !interruptedTasks.contains(taskId))
+            .collect(Collectors.toSet());
+        Set<TaskId> notExpiredTaskIds = SetUtils.difference(activeTasks.keySet(), expiredTaskIds);
+        Set<TaskId> canceledTaskIds = SetUtils.difference(
+            taskRepository.filterCanceled(notExpiredTaskIds),
+            interruptedTasks
         );
 
-        Set<TaskId> taskIdsToInterrupt = ImmutableSet.<TaskId>builder()
-                .addAll(expiredTaskIds)
-                .addAll(canceledTaskIds)
-                .build();
+        Set<TaskId> taskIdsToInterrupt = Stream.of(expiredTaskIds, canceledTaskIds)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toUnmodifiableSet());
         taskIdsToInterrupt.forEach(taskId -> {
             ActiveTask activeTask = activeTasks.get(taskId);
             activeTask.future().cancel(true);
@@ -271,7 +274,7 @@ public class WorkerManagerImpl implements WorkerManager {
             getExpiredTasksCounter(activeTask.taskEntity()).increment();
         });
 
-        expiredInstants.forEach(expiredDateToTask::removeAll);
+        expiredInstants.forEach(expiredDateToTask::remove);
         removeFromExpiredMap(canceledTaskIds);
 
         if (!expiredTaskIds.isEmpty()) {
@@ -284,7 +287,7 @@ public class WorkerManagerImpl implements WorkerManager {
 
     private void cleanFinishedTasks() {
         var iterator = activeTasks.entrySet().iterator();
-        Set<TaskId> removedTaskIds = Sets.newHashSet();
+        Set<TaskId> removedTaskIds = new HashSet<>();
         while (iterator.hasNext()) {
             var entry = iterator.next();
             //.isDone() doesn't work in case where task has been canceled, it means task can be still alive, but
@@ -301,13 +304,15 @@ public class WorkerManagerImpl implements WorkerManager {
     }
 
     private void removeFromExpiredMap(Set<TaskId> removedTaskIds) {
-        removedTaskIds = Sets.newHashSet(removedTaskIds);
-        var iterator = expiredDateToTask.entries().iterator();
+        removedTaskIds = new HashSet<>(removedTaskIds);
+        var iterator = expiredDateToTask.entrySet().iterator();
         while (iterator.hasNext() && !removedTaskIds.isEmpty()) {
             var entry = iterator.next();
-            TaskId taskId = entry.getValue();
-            if (removedTaskIds.remove(taskId)) {
-                iterator.remove();
+            List<TaskId> taskIds = entry.getValue();
+            for (TaskId taskId : taskIds) {
+                if (removedTaskIds.remove(taskId)) {
+                    iterator.remove();
+                }
             }
         }
     }
@@ -333,9 +338,9 @@ public class WorkerManagerImpl implements WorkerManager {
 
     private Counter getUnknownTaskCounter(TaskEntity taskEntity) {
         return metricHelper.counter(
-                List.of("workerManager", "unknown"),
-                List.of(),
-                taskEntity
+            List.of("workerManager", "unknown"),
+            List.of(),
+            taskEntity
         );
     }
 

@@ -5,8 +5,6 @@ import com.distributed_task_framework.model.AffinityGroupStat;
 import com.distributed_task_framework.model.AffinityGroupWrapper;
 import com.distributed_task_framework.persistence.entity.IdVersionEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -40,7 +38,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
     void shouldReturnMaxCreatedDateInNewVirtualQueue() {
         //when
         setFixedTime();
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
@@ -69,21 +67,21 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         Duration overlap = Duration.ofHours(1);
 
         setFixedTime(firstPoint.toSeconds());
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.NEW, populationSpecs);
 
         setFixedTime(secondPoint.toSeconds());
-        populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.NEW, populationSpecs);
 
         setFixedTime(thirdPoint.toSeconds());
-        populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(2, 3), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
                 Range.closedOpen(3, 4), TaskPopulateAndVerify.GenerationSpec.one()
             )
@@ -109,7 +107,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         final int limit = 10;
         setFixedTime();
         //total=10 affinityGroups
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 6), TaskPopulateAndVerify.GenerationSpec.one(),
                 Range.closedOpen(6, 7), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
                 Range.closedOpen(7, 10), TaskPopulateAndVerify.GenerationSpec.one()
@@ -150,7 +148,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         //when
         final int limit = 6;
         //setFixedTime();
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
             Range.closedOpen(0, 2), TaskPopulateAndVerify.GenerationSpec.one(),
             Range.closedOpen(2, 4), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
             Range.closedOpen(4, 6), TaskPopulateAndVerify.GenerationSpec.one()
@@ -210,7 +208,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         final int limit = 11;
         setFixedTime();
         //total=10 affinityGroups
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
                 Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
@@ -219,7 +217,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         var parkedTaskEntities = taskPopulateAndVerify.populate(0, 100, VirtualQueue.PARKED, populationSpecs);
         var inDeletedPartOne = taskPopulateAndVerify.populate(0, 10, VirtualQueue.DELETED, populationSpecs);
 
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecWithoutAffinity = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecWithoutAffinity = taskPopulateAndVerify.makePopulationSpec(Map.of(
             Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity()
         ));
         var stillDeletedTaskEntities = taskPopulateAndVerify.populate(0, 1, VirtualQueue.DELETED, populationSpecWithoutAffinity);

@@ -4,15 +4,12 @@ package com.distributed_task_framework.service.impl;
 import com.distributed_task_framework.BaseSpringIntegrationTest;
 import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.model.Capabilities;
-import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.persistence.repository.TaskExtendedRepository;
 import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.service.internal.PartitionTracker;
 import com.distributed_task_framework.service.internal.WorkerManager;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
@@ -28,11 +25,13 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
@@ -109,7 +108,7 @@ class VirtualQueueManagerPlannerImplTest extends BaseSpringIntegrationTest {
     void shouldMoveTasks() {
         //when
         setFixedTime();
-        List<TaskPopulateAndVerify.PopulationSpec> readyPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        List<TaskPopulateAndVerify.PopulationSpec> readyPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
             Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one())
         );
         var alreadyInReady = taskPopulateAndVerify.populate(0, 5, VirtualQueue.READY, readyPopulationSpecs);
@@ -169,10 +168,9 @@ class VirtualQueueManagerPlannerImplTest extends BaseSpringIntegrationTest {
             .build();
         var groupedTasks = taskPopulateAndVerify.verifyVirtualQueue(parkedToReadyAndParkedVerifyCtx);
 
-        var inReadyTasks = ImmutableList.<TaskEntity>builder()
-            .addAll(alreadyInReady)
-            .addAll(groupedTasks.get(VirtualQueue.READY))
-            .build();
+        var inReadyTasks = Stream.of(alreadyInReady, groupedTasks.get(VirtualQueue.READY))
+            .flatMap(Collection::stream)
+            .toList();
         this.verifyRegisteredPartitionFromTask(inReadyTasks);
     }
 

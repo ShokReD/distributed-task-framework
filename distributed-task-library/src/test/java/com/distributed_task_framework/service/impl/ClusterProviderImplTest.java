@@ -10,11 +10,11 @@ import com.distributed_task_framework.persistence.repository.NodeStateRepository
 import com.distributed_task_framework.service.internal.CapabilityRegister;
 import com.distributed_task_framework.service.internal.CapabilityRegisterProvider;
 import com.distributed_task_framework.service.internal.WorkerManager;
-import com.google.common.collect.Lists;
 import com.sun.management.OperatingSystemMXBean;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
+import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

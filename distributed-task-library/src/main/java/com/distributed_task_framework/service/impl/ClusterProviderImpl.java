@@ -11,9 +11,7 @@ import com.distributed_task_framework.service.internal.CapabilityRegisterProvide
 import com.distributed_task_framework.service.internal.ClusterProvider;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.distributed_task_framework.utils.SetUtils;
 import com.sun.management.OperatingSystemMXBean;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -89,15 +87,16 @@ public class ClusterProviderImpl implements ClusterProvider {
         this.currentCpuLoadingMetricsPosition = 0;
         this.currentCpuLoadingMetrics = initCpuLoadingMetricsStore(commonSettings);
         this.clock = clock;
-        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
-            .setDaemon(false)
-            .setNameFormat("dtf-watchdog-%d")
-            .setUncaughtExceptionHandler((t, e) -> {
+        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            var thread = new Thread(runnable);
+            thread.setDaemon(false);
+            thread.setName("dtf-watchdog-%d" + thread.getId());
+            thread.setUncaughtExceptionHandler((t, e) -> {
                 log.error("ClusterProviderImpl(): error when try to update", e);
                 ReflectionUtils.rethrowRuntimeException(e);
-            })
-            .build()
-        );
+            });
+            return thread;
+        });
         log.info("ClusterProviderImpl(): nodeId=[{}]", nodeId);
     }
 
@@ -176,7 +175,7 @@ public class ClusterProviderImpl implements ClusterProvider {
         return copyCpuLoadingMetrics[copyCpuLoadingMetrics.length / 2];
     }
 
-    @VisibleForTesting
+    // visible for testing
     void updateCapabilities() {
         Set<CapabilityEntity> publishedCurrentCapabilities = capabilityRepository.findByNodeId(nodeId);
         Set<CapabilityEntity> currentCapabilities = capabilityRegisterProvider.getAllCapabilityRegister().stream()
@@ -189,7 +188,7 @@ public class ClusterProviderImpl implements ClusterProvider {
                 )
             ).collect(Collectors.toSet());
         boolean hasToBeUpdated = publishedCurrentCapabilities.size() != currentCapabilities.size() ||
-            Sets.intersection(publishedCurrentCapabilities, currentCapabilities).size() != currentCapabilities.size();
+            SetUtils.intersection(publishedCurrentCapabilities, currentCapabilities).size() != currentCapabilities.size();
         if (hasToBeUpdated) {
             log.info(
                 "updateCapabilities(): capabilities changed from=[{}], to=[{}]",

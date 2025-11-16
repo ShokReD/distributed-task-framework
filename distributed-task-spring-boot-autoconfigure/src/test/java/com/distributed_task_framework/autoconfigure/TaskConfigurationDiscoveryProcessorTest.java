@@ -17,17 +17,16 @@ import com.distributed_task_framework.task.Task;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
-import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -46,14 +45,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TaskConfigurationDiscoveryProcessorTest {
     @Spy
-    private final DistributedTaskPropertiesMapper distributedTaskPropertiesMapper =
-        Mappers.getMapper(DistributedTaskPropertiesMapper.class);
+    DistributedTaskPropertiesMapper distributedTaskPropertiesMapper;
     @Mock
     DistributedTaskProperties properties;
     @Mock
     DistributedTaskService distributedTaskService;
     @Spy
-    Collection<Task<?>> tasks = Lists.newArrayList();
+    Collection<Task<?>> tasks = new ArrayList<>();
     @Mock
     RemoteTasks remoteTasks;
     @Spy

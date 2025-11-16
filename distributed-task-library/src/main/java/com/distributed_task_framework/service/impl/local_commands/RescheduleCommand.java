@@ -1,13 +1,13 @@
 package com.distributed_task_framework.service.impl.local_commands;
 
 import com.distributed_task_framework.model.TaskId;
-import com.google.common.collect.ImmutableList;
-import lombok.Value;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.service.internal.BatcheableLocalCommand;
 import com.distributed_task_framework.service.internal.InternalTaskCommandService;
-
 import jakarta.annotation.Nullable;
+import lombok.Value;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Value(staticConstructor = "of")
@@ -35,9 +35,8 @@ public class RescheduleCommand implements BatcheableLocalCommand<BatchReschedule
             return BatchRescheduleCommand.of(List.of(taskEntity));
         }
 
-        return BatchRescheduleCommand.of(ImmutableList.<TaskEntity>builder()
-                .addAll(batch.getTaskEntities())
-                .add(taskEntity)
-                .build());
+        return BatchRescheduleCommand.of(new ArrayList<>(batch.getTaskEntities()) {{
+            add(taskEntity);
+        }});
     }
 }

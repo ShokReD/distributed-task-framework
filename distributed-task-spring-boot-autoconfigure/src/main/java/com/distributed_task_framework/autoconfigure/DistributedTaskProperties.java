@@ -2,7 +2,6 @@ package com.distributed_task_framework.autoconfigure;
 
 import com.distributed_task_framework.model.ExecutionContext;
 import com.distributed_task_framework.task.Task;
-import com.google.common.collect.Maps;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
@@ -15,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.net.URL;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 @Validated
@@ -127,7 +127,7 @@ public class DistributedTaskProperties {
          * Value is a delay in ms before next polling.
          */
         @Builder.Default
-        Map<Integer, Integer> pollingDelay = Maps.newHashMap();
+        Map<Integer, Integer> pollingDelay = new HashMap<>();
     }
 
     @Data
@@ -145,7 +145,7 @@ public class DistributedTaskProperties {
          * Value is a delay in ms before next polling.
          */
         @Builder.Default
-        Map<Integer, Integer> manageDelay = Maps.newHashMap();
+        Map<Integer, Integer> manageDelay = new HashMap<>();
     }
 
     @Data
@@ -209,7 +209,7 @@ public class DistributedTaskProperties {
          * Value is a delay in ms before next polling.
          */
         @Builder.Default
-        Map<Integer, Integer> manageDelay = Maps.newHashMap();
+        Map<Integer, Integer> manageDelay = new HashMap<>();
     }
 
     @Data
@@ -222,7 +222,7 @@ public class DistributedTaskProperties {
          * Used in order to execute remote (outside of current cluster) tasks.
          */
         @Builder.Default
-        Map<String, URL> appToUrl = Maps.newHashMap();
+        Map<String, URL> appToUrl = new HashMap<>();
     }
 
     @Data

@@ -1,15 +1,23 @@
 package com.distributed_task_framework.service.impl;
 
+import com.distributed_task_framework.controller.dto.CommandListDto;
 import com.distributed_task_framework.mapper.CommandMapper;
+import com.distributed_task_framework.persistence.entity.RemoteCommandEntity;
+import com.distributed_task_framework.persistence.entity.RemoteTaskWorkerEntity;
+import com.distributed_task_framework.persistence.repository.DlcRepository;
+import com.distributed_task_framework.persistence.repository.RemoteCommandRepository;
+import com.distributed_task_framework.persistence.repository.RemoteTaskWorkerRepository;
 import com.distributed_task_framework.service.TaskSerializer;
+import com.distributed_task_framework.service.impl.remote_commands.RemoteCommand;
+import com.distributed_task_framework.service.internal.ClusterProvider;
+import com.distributed_task_framework.service.internal.DeliveryManager;
+import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -28,23 +36,13 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientException;
 import reactor.netty.http.client.HttpClient;
-import com.distributed_task_framework.controller.dto.CommandListDto;
-import com.distributed_task_framework.persistence.entity.RemoteCommandEntity;
-import com.distributed_task_framework.persistence.entity.RemoteTaskWorkerEntity;
-import com.distributed_task_framework.persistence.repository.DlcRepository;
-import com.distributed_task_framework.persistence.repository.RemoteCommandRepository;
-import com.distributed_task_framework.persistence.repository.RemoteTaskWorkerRepository;
-import com.distributed_task_framework.service.impl.remote_commands.RemoteCommand;
-import com.distributed_task_framework.service.internal.ClusterProvider;
-import com.distributed_task_framework.service.internal.DeliveryManager;
-import com.distributed_task_framework.settings.CommonSettings;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -96,49 +94,51 @@ public class DeliveryManagerImpl implements DeliveryManager {
         this.taskSerializer = taskSerializer;
         this.transactionManager = transactionManager;
         this.clock = clock;
-        this.deliverTaskByAppName = Maps.newHashMap();
+        this.deliverTaskByAppName = new HashMap<>();
         this.httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) commandDeliverySettings.getConnectionTimeout().toMillis())
-                .responseTimeout(commandDeliverySettings.getResponseTimeout())
-                .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(
-                                commandDeliverySettings.getReadTimeout().toMillis(),
-                                TimeUnit.MILLISECONDS
-                        ))
-                                .addHandlerLast(new WriteTimeoutHandler(
-                                        commandDeliverySettings.getWriteTimeout().toMillis(),
-                                        TimeUnit.MILLISECONDS
-                                ))
-                );
-        this.watchdogExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
-                .setDaemon(false)
-                .setNameFormat("output-watch-%d")
-                .setUncaughtExceptionHandler((t, e) -> {
-                    log.error("scheduleWatchdog(): error when watch by schedule table", e);
-                    ReflectionUtils.rethrowRuntimeException(e);
-                })
-                .build()
-        );
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) commandDeliverySettings.getConnectionTimeout().toMillis())
+            .responseTimeout(commandDeliverySettings.getResponseTimeout())
+            .doOnConnected(conn ->
+                conn.addHandlerLast(new ReadTimeoutHandler(
+                        commandDeliverySettings.getReadTimeout().toMillis(),
+                        TimeUnit.MILLISECONDS
+                    ))
+                    .addHandlerLast(new WriteTimeoutHandler(
+                        commandDeliverySettings.getWriteTimeout().toMillis(),
+                        TimeUnit.MILLISECONDS
+                    ))
+            );
+        this.watchdogExecutorService = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            var thread = new Thread(runnable);
+            thread.setDaemon(false);
+            thread.setName("output-watch-" + thread.getId());
+            thread.setUncaughtExceptionHandler((t, e) -> {
+                log.error("scheduleWatchdog(): error when watch by schedule table", e);
+                ReflectionUtils.rethrowRuntimeException(e);
+            });
+            return thread;
+        });
         this.deliveryExecutorService = Executors.newFixedThreadPool(
-                commonSettings.getDeliveryManagerSettings().getRemoteApps().getAppToUrl().size(),
-                new ThreadFactoryBuilder()
-                        .setDaemon(false)
-                        .setNameFormat("delivery-%d")
-                        .setUncaughtExceptionHandler((t, e) -> {
-                            log.error("delivery(): error when run delivery", e);
-                            ReflectionUtils.rethrowRuntimeException(e);
-                        })
-                        .build()
-        );
+            commonSettings.getDeliveryManagerSettings().getRemoteApps().getAppToUrl().size(),
+            runnable -> {
+                var thread = new Thread(runnable);
+                thread.setDaemon(false);
+                thread.setName("delivery-" + thread.getId());
+                thread.setUncaughtExceptionHandler((t, e) -> {
+                    log.error("delivery(): error when run delivery", e);
+                    ReflectionUtils.rethrowRuntimeException(e);
+                });
+                return thread;
+            });
     }
 
     @PostConstruct
     public void init() {
         watchdogExecutorService.scheduleWithFixedDelay(
-                ExecutorUtils.wrapRepeatableRunnable(this::watchdog),
-                commandDeliverySettings.getWatchdogInitialDelayMs(),
-                commandDeliverySettings.getWatchdogFixedDelayMs(),
-                TimeUnit.MILLISECONDS
+            ExecutorUtils.wrapRepeatableRunnable(this::watchdog),
+            commandDeliverySettings.getWatchdogInitialDelayMs(),
+            commandDeliverySettings.getWatchdogFixedDelayMs(),
+            TimeUnit.MILLISECONDS
         );
     }
 
@@ -155,12 +155,12 @@ public class DeliveryManagerImpl implements DeliveryManager {
         log.info("shutdown(): shutdown completed");
     }
 
-    @VisibleForTesting
+    // visible for testing
     void watchdog() {
         commandDeliverySettings.getRemoteApps()
-                .getAppToUrl()
-                .keySet()
-                .forEach(this::watchdog);
+            .getAppToUrl()
+            .keySet()
+            .forEach(this::watchdog);
     }
 
     private void watchdog(String appName) {
@@ -171,11 +171,11 @@ public class DeliveryManagerImpl implements DeliveryManager {
             if (clusterProvider.nodeId().equals(activeDelivery.getNodeStateId())) {
                 if (deliveryLoopFuture == null) {
                     log.warn("watchdog(): delivery manager=[{}] for appName=[{}] hasn't been started right after was assigned, starting...",
-                            clusterProvider.nodeId(), appName);
+                        clusterProvider.nodeId(), appName);
                     startDeliveryLoop(appName);
                 } else if (deliveryLoopFuture.isDone()) {
                     log.error("watchdog(): delivery manager=[{}] for appName=[{}] has been completed abnormally, restart it",
-                            clusterProvider.nodeId(), appName);
+                        clusterProvider.nodeId(), appName);
                     startDeliveryLoop(appName);
                 }
                 //do nothing it is ok.
@@ -183,7 +183,7 @@ public class DeliveryManagerImpl implements DeliveryManager {
             }
             if (deliveryLoopFuture != null) {
                 log.error("watchdog(): delivery manager for appName=[{}] conflict detected: nodeId=[{}], concurrentPlannerNodeId=[{}]",
-                        appName, clusterProvider.nodeId(), activeDelivery.getNodeStateId());
+                    appName, clusterProvider.nodeId(), activeDelivery.getNodeStateId());
                 deliveryLoopFuture.cancel(true);
                 deliverTaskByAppName.remove(appName);
             }
@@ -192,9 +192,9 @@ public class DeliveryManagerImpl implements DeliveryManager {
         log.info("watchdog(): can't detect active delivery manager for appName=[{}], try to become it", appName);
         try {
             remoteTaskWorkerRepository.save(RemoteTaskWorkerEntity.builder()
-                    .appName(appName)
-                    .nodeStateId(clusterProvider.nodeId())
-                    .build()
+                .appName(appName)
+                .nodeStateId(clusterProvider.nodeId())
+                .build()
             );
         } catch (Exception exception) {
             log.info("watchdog(): nodeId=[{}] can't become an active delivery manager for appName=[{}]", clusterProvider.nodeId(), appName, exception);
@@ -217,15 +217,15 @@ public class DeliveryManagerImpl implements DeliveryManager {
     }
 
     @SneakyThrows
-    @VisibleForTesting
+        // visible for testing
     void deliveryLoop(String appName) {
         log.info("deliveryLoop(): has been started for appName=[{}]", appName);
         var baseUri = commandDeliverySettings.getRemoteApps().getAppToUrl().get(appName).toString();
         WebClient webClient = WebClient.builder()
-                .baseUrl(baseUri)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.MULTIPART_FORM_DATA.toString())
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .build();
+            .baseUrl(baseUri)
+            .defaultHeader(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.MULTIPART_FORM_DATA.toString())
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
+            .build();
 
         while (!Thread.currentThread().isInterrupted()) {
             int taskNumber = deliveryCommand(appName, webClient);
@@ -242,9 +242,9 @@ public class DeliveryManagerImpl implements DeliveryManager {
 
     private int deliveryCommand(String appName, WebClient webClient) throws IOException {
         Collection<RemoteCommandEntity> commandsToSend = remoteCommandRepository.findCommandsToSend(
-                appName,
-                LocalDateTime.now(clock),
-                commandDeliverySettings.getBatchSize()
+            appName,
+            LocalDateTime.now(clock),
+            commandDeliverySettings.getBatchSize()
         );
         int commandSize = commandsToSend.size();
         if (commandsToSend.isEmpty()) {
@@ -259,21 +259,21 @@ public class DeliveryManagerImpl implements DeliveryManager {
 
         try {
             ResponseEntity<Void> responseEntity = webClient.post()
-                    .uri(RemoteCommand.DEFAULT_COMMAND_PATH)
-                    .body(BodyInserters.fromMultipartData(multipartBody))
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
+                .uri(RemoteCommand.DEFAULT_COMMAND_PATH)
+                .body(BodyInserters.fromMultipartData(multipartBody))
+                .retrieve()
+                .toBodilessEntity()
+                .block();
             if (responseEntity == null) {
                 log.warn("Can't delivery commands=[{}] for appName=[{}], responseEntity is null", commandSize, appName);
                 return commandSize;
             }
             if (!responseEntity.getStatusCode().is2xxSuccessful()) {
                 log.warn(
-                        "Can't delivery commands=[{}] for appName=[{}], responce code=[{}]",
-                        commandSize,
-                        appName,
-                        responseEntity.getStatusCode()
+                    "Can't delivery commands=[{}] for appName=[{}], responce code=[{}]",
+                    commandSize,
+                    appName,
+                    responseEntity.getStatusCode()
                 );
                 return commandSize;
             }
@@ -287,18 +287,18 @@ public class DeliveryManagerImpl implements DeliveryManager {
     }
 
     private void applyRetryPolicy(String appName, Collection<RemoteCommandEntity> failedCommandsToSend) {
-        List<RemoteCommandEntity> toUpdate = Lists.newArrayList();
-        List<RemoteCommandEntity> toDlc = Lists.newArrayList();
+        List<RemoteCommandEntity> toUpdate = new ArrayList<>();
+        List<RemoteCommandEntity> toDlc = new ArrayList<>();
         for (RemoteCommandEntity remoteCommandEntity : failedCommandsToSend) {
             int currentFailures = remoteCommandEntity.getFailures() + 1;
             remoteCommandEntity = remoteCommandEntity.toBuilder()
-                    .failures(currentFailures)
-                    .build();
+                .failures(currentFailures)
+                .build();
             Optional<LocalDateTime> nextRetryDateTime = commandDeliverySettings.getRetry().next(currentFailures, clock);
             if (nextRetryDateTime.isPresent()) {
                 remoteCommandEntity = remoteCommandEntity.toBuilder()
-                        .sendDateUtc(nextRetryDateTime.get())
-                        .build();
+                    .sendDateUtc(nextRetryDateTime.get())
+                    .build();
                 toUpdate.add(remoteCommandEntity);
             } else {
                 toDlc.add(remoteCommandEntity);
@@ -310,10 +310,10 @@ public class DeliveryManagerImpl implements DeliveryManager {
                 remoteCommandRepository.deleteAll(toDlc);
                 dlcRepository.saveAll(commandMapper.mapToDlcList(toDlc));
                 log.warn(
-                        "applyRetryPolicy(): appName=[{}] sent [{}] commands to DLC: [{}]",
-                        appName,
-                        toDlc.size(),
-                        toDlc.stream().map(RemoteCommandEntity::getAction).collect(Collectors.toSet())
+                    "applyRetryPolicy(): appName=[{}] sent [{}] commands to DLC: [{}]",
+                    appName,
+                    toDlc.size(),
+                    toDlc.stream().map(RemoteCommandEntity::getAction).collect(Collectors.toSet())
                 );
             }
         });

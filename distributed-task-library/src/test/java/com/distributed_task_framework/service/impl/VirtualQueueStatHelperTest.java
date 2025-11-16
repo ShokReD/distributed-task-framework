@@ -9,7 +9,6 @@ import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.service.internal.PlannerGroups;
 import com.distributed_task_framework.service.internal.PlannerService;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -21,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -293,7 +293,7 @@ class VirtualQueueStatHelperTest extends BaseMetricTest {
                 Range.closedOpen(2, 3), deferred(3)
             )
         );
-        List<TaskEntity> allTasks = Lists.newArrayList();
+        List<TaskEntity> allTasks = new ArrayList<>();
         allTasks.addAll(taskPopulateAndVerify.populate(0, 18, VirtualQueue.NEW, populationSpecs));
         allTasks.addAll(taskPopulateAndVerify.populate(0, 18, VirtualQueue.READY, populationSpecs));
         allTasks.addAll(taskPopulateAndVerify.populate(0, 18, VirtualQueue.PARKED, populationSpecs));

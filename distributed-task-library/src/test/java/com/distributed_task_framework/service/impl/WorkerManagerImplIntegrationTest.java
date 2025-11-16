@@ -15,7 +15,7 @@ import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.task.Task;
 import com.distributed_task_framework.task.TaskWorkerGenerator;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.collect.Sets;
+import com.distributed_task_framework.utils.SetUtils;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
@@ -30,6 +30,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -86,19 +87,19 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
         when(clusterProvider.nodeId()).thenReturn(NODE_ID);
 
         when(taskRegistryService.getRegisteredLocalTask(eq(KNOWN_TASK_NAME)))
-                .thenReturn(Optional.of(RegisteredTask.of(
-                        (Task<Object>) mock(Task.class),
-                        defaultTaskSettings.toBuilder().build()
-                )));
+            .thenReturn(Optional.of(RegisteredTask.of(
+                (Task<Object>) mock(Task.class),
+                defaultTaskSettings.toBuilder().build()
+            )));
         when(taskRegistryService.getRegisteredLocalTask(eq(TASK_WITH_TIMEOUT_NAME)))
-                .thenReturn(Optional.of(RegisteredTask.of(
-                        (Task<Object>) mock(Task.class),
-                        defaultTaskSettings.toBuilder()
-                                .timeout(TASK_TIMEOUT)
-                                .build()
-                )));
+            .thenReturn(Optional.of(RegisteredTask.of(
+                (Task<Object>) mock(Task.class),
+                defaultTaskSettings.toBuilder()
+                    .timeout(TASK_TIMEOUT)
+                    .build()
+            )));
         when(taskRegistryService.getRegisteredLocalTask(eq(UNKNOWN_TASK_NAME)))
-                .thenReturn(Optional.empty());
+            .thenReturn(Optional.empty());
 
         TaskWorker taskWorker = TaskWorkerGenerator.defineTaskWorker((taskEntity, registeredTask) -> {
             taskRepository.delete(taskEntity);
@@ -106,14 +107,14 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
         });
         when(taskWorkerFactory.buildTaskWorker(any(TaskEntity.class), any(TaskSettings.class))).thenReturn(taskWorker);
         workerManager = Mockito.spy(new WorkerManagerImpl(
-                commonSettings,
-                clusterProvider,
-                taskRegistryService,
-                taskWorkerFactory,
-                taskRepository,
-                taskMapper,
-                clock,
-                metricHelper
+            commonSettings,
+            clusterProvider,
+            taskRegistryService,
+            taskWorkerFactory,
+            taskRepository,
+            taskMapper,
+            clock,
+            metricHelper
         ));
     }
 
@@ -130,16 +131,16 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
     void shouldExecuteNewTasks() {
         //when
         List<TaskEntity> newTasksToExecute = IntStream.range(0, 100)
-                .mapToObj(i -> TaskEntity.builder()
-                        .taskName(KNOWN_TASK_NAME)
-                        .virtualQueue(VirtualQueue.NEW)
-                        .workflowId(UUID.randomUUID())
-                        .workflowCreatedDateUtc(LocalDateTime.now(clock))
-                        .assignedWorker(NODE_ID)
-                        .executionDateUtc(LocalDateTime.now(clock))
-                        .build()
-                )
-                .collect(Collectors.toList());
+            .mapToObj(i -> TaskEntity.builder()
+                .taskName(KNOWN_TASK_NAME)
+                .virtualQueue(VirtualQueue.NEW)
+                .workflowId(UUID.randomUUID())
+                .workflowCreatedDateUtc(LocalDateTime.now(clock))
+                .assignedWorker(NODE_ID)
+                .executionDateUtc(LocalDateTime.now(clock))
+                .build()
+            )
+            .collect(Collectors.toList());
         taskRepository.saveAll(newTasksToExecute);
 
         //do
@@ -154,16 +155,16 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
     void shouldNotExecuteForeignNewTasks() {
         //when
         List<TaskEntity> newUnknownTasksToExecute = IntStream.range(0, 100)
-                .mapToObj(i -> TaskEntity.builder()
-                        .taskName(UNKNOWN_TASK_NAME)
-                        .virtualQueue(VirtualQueue.NEW)
-                        .workflowId(UUID.randomUUID())
-                        .workflowCreatedDateUtc(LocalDateTime.now(clock))
-                        .assignedWorker(NODE_ID)
-                        .executionDateUtc(LocalDateTime.now(clock))
-                        .build()
-                )
-                .collect(Collectors.toList());
+            .mapToObj(i -> TaskEntity.builder()
+                .taskName(UNKNOWN_TASK_NAME)
+                .virtualQueue(VirtualQueue.NEW)
+                .workflowId(UUID.randomUUID())
+                .workflowCreatedDateUtc(LocalDateTime.now(clock))
+                .assignedWorker(NODE_ID)
+                .executionDateUtc(LocalDateTime.now(clock))
+                .build()
+            )
+            .collect(Collectors.toList());
         taskRepository.saveAll(newUnknownTasksToExecute);
 
         //do
@@ -171,8 +172,8 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
 
         //verify
         waitFor(() -> taskRepository.findAllByTaskName(UNKNOWN_TASK_NAME).stream()
-                .allMatch(shortTaskEntity -> shortTaskEntity.getAssignedWorker() == null &&
-                        shortTaskEntity.getLastAssignedDateUtc() == null)
+            .allMatch(shortTaskEntity -> shortTaskEntity.getAssignedWorker() == null &&
+                shortTaskEntity.getLastAssignedDateUtc() == null)
         );
         waitFor(() -> workerManager.getCurrentActiveTasks() == 0L);
     }
@@ -182,6 +183,17 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
     void shouldNotExecutedWhenAlreadyInProgressTasks() {
         //when
         TaskEntity alreadyInProgressTask = taskRepository.saveOrUpdate(TaskEntity.builder()
+            .taskName(KNOWN_TASK_NAME)
+            .virtualQueue(VirtualQueue.NEW)
+            .workflowId(UUID.randomUUID())
+            .workflowCreatedDateUtc(LocalDateTime.now(clock))
+            .assignedWorker(NODE_ID)
+            .executionDateUtc(LocalDateTime.now(clock))
+            .build()
+        );
+
+        List<TaskEntity> newTasksToExecute = IntStream.range(0, 50)
+            .mapToObj(i -> TaskEntity.builder()
                 .taskName(KNOWN_TASK_NAME)
                 .virtualQueue(VirtualQueue.NEW)
                 .workflowId(UUID.randomUUID())
@@ -189,19 +201,8 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
                 .assignedWorker(NODE_ID)
                 .executionDateUtc(LocalDateTime.now(clock))
                 .build()
-        );
-
-        List<TaskEntity> newTasksToExecute = IntStream.range(0, 50)
-                .mapToObj(i -> TaskEntity.builder()
-                        .taskName(KNOWN_TASK_NAME)
-                        .virtualQueue(VirtualQueue.NEW)
-                        .workflowId(UUID.randomUUID())
-                        .workflowCreatedDateUtc(LocalDateTime.now(clock))
-                        .assignedWorker(NODE_ID)
-                        .executionDateUtc(LocalDateTime.now(clock))
-                        .build()
-                )
-                .collect(Collectors.toList());
+            )
+            .collect(Collectors.toList());
         taskRepository.saveAll(newTasksToExecute);
 
         CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -237,34 +238,34 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
     void shouldRunNotMoreThanMaxInParallelAndPreserveOrdering() {
         //when
         List<TaskEntity> newEarliestTasksToExecute = IntStream.range(0, 10)
-                .mapToObj(i -> TaskEntity.builder()
-                        .taskName(KNOWN_TASK_NAME)
-                        .virtualQueue(VirtualQueue.NEW)
-                        .workflowId(UUID.randomUUID())
-                        .workflowCreatedDateUtc(LocalDateTime.now(clock))
-                        .assignedWorker(NODE_ID)
-                        .executionDateUtc(LocalDateTime.now(clock))
-                        .build()
-                )
-                .collect(Collectors.toList());
+            .mapToObj(i -> TaskEntity.builder()
+                .taskName(KNOWN_TASK_NAME)
+                .virtualQueue(VirtualQueue.NEW)
+                .workflowId(UUID.randomUUID())
+                .workflowCreatedDateUtc(LocalDateTime.now(clock))
+                .assignedWorker(NODE_ID)
+                .executionDateUtc(LocalDateTime.now(clock))
+                .build()
+            )
+            .collect(Collectors.toList());
         Set<UUID> newEarliestTaskIdsToExecute = taskRepository.saveAll(newEarliestTasksToExecute).stream()
-                .map(TaskEntity::getId)
-                .collect(Collectors.toSet());
+            .map(TaskEntity::getId)
+            .collect(Collectors.toSet());
 
         List<TaskEntity> newLatestTasksToExecute = IntStream.range(0, 10)
-                .mapToObj(i -> TaskEntity.builder()
-                        .taskName(KNOWN_TASK_NAME)
-                        .virtualQueue(VirtualQueue.NEW)
-                        .workflowId(UUID.randomUUID())
-                        .workflowCreatedDateUtc(LocalDateTime.now(clock))
-                        .assignedWorker(NODE_ID)
-                        .executionDateUtc(LocalDateTime.now(clock))
-                        .build()
-                )
-                .collect(Collectors.toList());
+            .mapToObj(i -> TaskEntity.builder()
+                .taskName(KNOWN_TASK_NAME)
+                .virtualQueue(VirtualQueue.NEW)
+                .workflowId(UUID.randomUUID())
+                .workflowCreatedDateUtc(LocalDateTime.now(clock))
+                .assignedWorker(NODE_ID)
+                .executionDateUtc(LocalDateTime.now(clock))
+                .build()
+            )
+            .collect(Collectors.toList());
         Set<UUID> newLatestTaskIdsToExecute = taskRepository.saveAll(newLatestTasksToExecute).stream()
-                .map(TaskEntity::getId)
-                .collect(Collectors.toSet());
+            .map(TaskEntity::getId)
+            .collect(Collectors.toSet());
 
         ConcurrentLinkedQueue<UUID> executedIds = new ConcurrentLinkedQueue<>();
         CyclicBarrier cyclicBarrier = new CyclicBarrier(10, () -> log.info("Batch has been processed!"));
@@ -290,11 +291,11 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
         waitFor(() -> workerManager.getCurrentActiveTasks() == 0L);
 
         List<UUID> executedIdList = Lists.newArrayList(executedIds);
-        Set<UUID> realEarliestTaskIds = Sets.newHashSet(executedIdList.subList(0, 10));
-        Set<UUID> realLatestTaskIds = Sets.newHashSet(executedIdList.subList(10, 20));
+        Set<UUID> realEarliestTaskIds = new HashSet<>(executedIdList.subList(0, 10));
+        Set<UUID> realLatestTaskIds = new HashSet<>(executedIdList.subList(10, 20));
 
-        assertThat(Sets.intersection(newEarliestTaskIdsToExecute, realEarliestTaskIds)).hasSize(10);
-        assertThat(Sets.intersection(newLatestTaskIdsToExecute, realLatestTaskIds)).hasSize(10);
+        assertThat(SetUtils.intersection(newEarliestTaskIdsToExecute, realEarliestTaskIds)).hasSize(10);
+        assertThat(SetUtils.intersection(newLatestTaskIdsToExecute, realLatestTaskIds)).hasSize(10);
     }
 
     @Test
@@ -302,13 +303,13 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
         //when
         setFixedTime();
         taskRepository.saveOrUpdate(TaskEntity.builder()
-                .taskName(TASK_WITH_TIMEOUT_NAME)
-                .virtualQueue(VirtualQueue.NEW)
-                .workflowId(UUID.randomUUID())
-                .workflowCreatedDateUtc(LocalDateTime.now(clock))
-                .assignedWorker(NODE_ID)
-                .executionDateUtc(LocalDateTime.now(clock))
-                .build()
+            .taskName(TASK_WITH_TIMEOUT_NAME)
+            .virtualQueue(VirtualQueue.NEW)
+            .workflowId(UUID.randomUUID())
+            .workflowCreatedDateUtc(LocalDateTime.now(clock))
+            .assignedWorker(NODE_ID)
+            .executionDateUtc(LocalDateTime.now(clock))
+            .build()
         );
         AtomicBoolean hasBeenInterrupted = new AtomicBoolean(false);
         CountDownLatch waitToAllowToDelete = new CountDownLatch(1);
@@ -353,13 +354,13 @@ class WorkerManagerImplIntegrationTest extends BaseSpringIntegrationTest {
     void shouldBeInterruptedWhenCanceled() {
         //when
         TaskEntity newTaskEntity = taskRepository.saveOrUpdate(TaskEntity.builder()
-                .taskName(KNOWN_TASK_NAME)
-                .virtualQueue(VirtualQueue.NEW)
-                .workflowId(UUID.randomUUID())
-                .workflowCreatedDateUtc(LocalDateTime.now(clock))
-                .assignedWorker(NODE_ID)
-                .executionDateUtc(LocalDateTime.now(clock))
-                .build()
+            .taskName(KNOWN_TASK_NAME)
+            .virtualQueue(VirtualQueue.NEW)
+            .workflowId(UUID.randomUUID())
+            .workflowCreatedDateUtc(LocalDateTime.now(clock))
+            .assignedWorker(NODE_ID)
+            .executionDateUtc(LocalDateTime.now(clock))
+            .build()
         );
         AtomicBoolean hasBeenInterrupted = new AtomicBoolean(false);
         CountDownLatch waitToAllowToDelete = new CountDownLatch(1);

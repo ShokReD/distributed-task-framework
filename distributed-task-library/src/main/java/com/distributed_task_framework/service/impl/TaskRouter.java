@@ -1,32 +1,32 @@
 package com.distributed_task_framework.service.impl;
 
 import com.distributed_task_framework.model.BatchRouteMap;
+import com.distributed_task_framework.model.BatchRouteMap.TaskNameAndNode;
 import com.distributed_task_framework.model.BatchRouteRequest;
 import com.distributed_task_framework.model.NodeCapacity;
 import com.distributed_task_framework.model.NodeTask;
 import com.distributed_task_framework.model.NodeTaskActivity;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.model.PartitionStat;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.collect.Table;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.distributed_task_framework.settings.CommonSettings.PlannerSettings.UNLIMITED_PARALLEL_TASKS;
+import static com.distributed_task_framework.utils.SetUtils.difference;
 
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -35,13 +35,13 @@ public class TaskRouter {
     Partition partitionCursor;
 
     public TaskRouter() {
-        this.nodeLastUpdateNumber = Maps.newConcurrentMap();
+        this.nodeLastUpdateNumber = new ConcurrentHashMap<>();
         this.partitionCursor = null;
     }
 
-    @VisibleForTesting
-    public TaskRouter(Map<UUID, Long> nodeLastUpdateNumber,
-                      Partition partitionCursor) {
+    // Visible for testing
+    TaskRouter(Map<UUID, Long> nodeLastUpdateNumber,
+               Partition partitionCursor) {
         this.nodeLastUpdateNumber = nodeLastUpdateNumber;
         this.partitionCursor = partitionCursor;
     }
@@ -59,12 +59,12 @@ public class TaskRouter {
     }
 
     public BatchRouteMap batchRoute(BatchRouteRequest batchRouteRequest) {
-        Map<Partition, Integer> partitionLimits = Maps.newHashMap();
-        Table<String, UUID, Integer> taskNameNodeQuota = HashBasedTable.create();
+        Map<Partition, Integer> partitionLimits = new HashMap<>();
+        Map<TaskNameAndNode, Integer> taskNameNodeQuota = new HashMap<>();
 
-        Map<String, Integer> actualClusterTaskLimits = Maps.newHashMap(batchRouteRequest.getActualClusterTaskLimits());
+        Map<String, Integer> actualClusterTaskLimits = new HashMap<>(batchRouteRequest.getActualClusterTaskLimits());
         Map<String, Integer> nodeTaskLimits = batchRouteRequest.getNodeTaskLimits();
-        List<NodeCapacity> nodeCapacities = Lists.newArrayList(batchRouteRequest.getNodeCapacities());
+        List<NodeCapacity> nodeCapacities = new ArrayList<>(batchRouteRequest.getNodeCapacities());
         Map<NodeTask, Integer> nodeTaskToActivity = nodeTaskToActivityAsMap(batchRouteRequest.getNodeTaskActivities());
         Map<Partition, Integer> newTaskBatches = newTaskBatchesAsMap(batchRouteRequest.getPartitionStatsToPlan());
 
@@ -78,7 +78,7 @@ public class TaskRouter {
 
         normalizeNodeLastUpdate(activeNodes);
 
-        Set<Partition> processed = Sets.newHashSet();
+        Set<Partition> processed = new HashSet<>();
         int cursorIdx = findCursorIdx(order);
         while (processed.size() < order.size()) {
             for (int i = cursorIdx; i < order.size(); ++i) {
@@ -113,8 +113,10 @@ public class TaskRouter {
                     .build();
                 nodeTaskToActivity.compute(affectedNodeTask, (key, oldVal) -> oldVal == null ? 1 : oldVal + 1);
 
-                Integer currentQuota = taskNameNodeQuota.get(taskName, nodeCapacity.getNode());
-                taskNameNodeQuota.put(taskName, nodeCapacity.getNode(), currentQuota == null ? 1 : currentQuota + 1);
+                taskNameNodeQuota.compute(
+                    new TaskNameAndNode(taskName, nodeCapacity.getNode()),
+                    (k, currentQuota) -> currentQuota == null ? 1 : currentQuota + 1
+                );
 
                 newTaskBatches.computeIfPresent(partitionToPlan, (key, oldVal) -> oldVal - 1);
                 partitionLimits.compute(partitionToPlan, (key, oldVal) -> oldVal == null ? 1 : oldVal + 1);
@@ -133,12 +135,12 @@ public class TaskRouter {
             .build();
     }
 
-    @VisibleForTesting
+    // visible for testing
     Optional<Partition> affinityGroupTaskNameEntityCursor() {
         return Optional.ofNullable(partitionCursor);
     }
 
-    @VisibleForTesting
+    // visible for testing
     Optional<UUID> lastUpdatedNode() {
         return nodeLastUpdateNumber.entrySet().stream()
             .max(Comparator.comparingLong(Map.Entry::getValue))
@@ -155,7 +157,7 @@ public class TaskRouter {
     }
 
     private void normalizeNodeLastUpdate(Set<UUID> activeNodes) {
-        var inactiveNodeIds = Sets.newHashSet(Sets.difference(nodeLastUpdateNumber.keySet(), activeNodes));
+        var inactiveNodeIds = difference(nodeLastUpdateNumber.keySet(), activeNodes);
         inactiveNodeIds.forEach(nodeLastUpdateNumber::remove);
 
         Optional<Long> minValOpt = nodeLastUpdateNumber.entrySet().stream()

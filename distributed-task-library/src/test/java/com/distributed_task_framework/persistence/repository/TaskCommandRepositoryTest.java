@@ -6,7 +6,6 @@ import com.distributed_task_framework.exception.OptimisticLockException;
 import com.distributed_task_framework.exception.UnknownTaskException;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -19,6 +18,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -213,7 +213,8 @@ class TaskCommandRepositoryTest extends BaseRepositoryTest {
 
 
     private TaskEntity createSimpleTaskEntity(VirtualQueue virtualQueue) {
-        var spec = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
+        var spec = taskPopulateAndVerify.makePopulationSpec(
+            Map.of(
                 Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );

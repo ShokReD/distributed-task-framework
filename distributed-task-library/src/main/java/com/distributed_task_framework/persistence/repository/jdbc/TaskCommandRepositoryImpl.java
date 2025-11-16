@@ -6,8 +6,7 @@ import com.distributed_task_framework.exception.UnknownTaskException;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskCommandRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import com.distributed_task_framework.utils.SetUtils;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -16,13 +15,15 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
 import static com.distributed_task_framework.persistence.repository.DtfRepositoryConstants.DTF_JDBC_OPS;
-import static com.distributed_task_framework.utils.ComparatorUtils.TASK_ID_COMPARATOR;
 import static com.distributed_task_framework.utils.ComparatorUtils.NULL_SAFE_UUID_STRING_COMPARATOR;
+import static com.distributed_task_framework.utils.ComparatorUtils.TASK_ID_COMPARATOR;
 import static java.lang.String.format;
 
 @Slf4j
@@ -76,18 +77,18 @@ public class TaskCommandRepositoryImpl implements TaskCommandRepository {
             .toList();
         int[] result = namedParameterJdbcTemplate.getJdbcOperations()
             .batchUpdate(RESCHEDULE, batchArgs);
-        var notAffected = JdbcTools.filterNotAffected(Lists.newArrayList(taskEntities), result);
+        var notAffected = JdbcTools.filterNotAffected(new ArrayList<>(taskEntities), result);
         if (notAffected.isEmpty()) {
             return;
         }
 
         var notAffectedIds = notAffected.stream().map(TaskEntity::getId).toList();
         var optimisticLockIds = filerExisted(notAffectedIds);
-        var unknownTaskIds = Sets.difference(Sets.newHashSet(notAffectedIds), Sets.newHashSet(optimisticLockIds));
+        var unknownTaskIds = SetUtils.difference(new HashSet<>(notAffectedIds), new HashSet<>(optimisticLockIds));
 
         throw BatchUpdateException.builder()
             .optimisticLockTaskIds(optimisticLockIds)
-            .unknownTaskIds(Lists.newArrayList(unknownTaskIds))
+            .unknownTaskIds(new ArrayList<>(unknownTaskIds))
             .build();
     }
 

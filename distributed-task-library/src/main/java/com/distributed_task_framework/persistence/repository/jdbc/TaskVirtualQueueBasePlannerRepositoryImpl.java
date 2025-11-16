@@ -6,8 +6,6 @@ import com.distributed_task_framework.model.PartitionStat;
 import com.distributed_task_framework.persistence.entity.ShortTaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskVirtualQueueBasePlannerRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +17,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 import java.sql.Types;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,7 +114,7 @@ public class TaskVirtualQueueBasePlannerRepositoryImpl implements TaskVirtualQue
                                                       Set<Partition> entities,
                                                       int limit) {
         final String tablePrefix = "afg_tn_";
-        List<Partition> partitions = Lists.newArrayList(entities);
+        List<Partition> partitions = new ArrayList<>(entities);
         String affinityGroupTaskNameTables = IntStream.range(0, partitions.size())
             .mapToObj(i -> {
                     Partition partition = partitions.get(i);
@@ -144,14 +144,14 @@ public class TaskVirtualQueueBasePlannerRepositoryImpl implements TaskVirtualQue
             .replace("{PARTITION_STAT_AGGREGATED_TABLE}", affinityGroupTaskNameAggregatedTable);
 
 
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(
-                query,
-                new MapSqlParameterSource()
-                    .addValue("knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY)
-                    .addValue("executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP)
-                    .addValue("limit", limit, Types.BIGINT),
-                TASK_NAME_AFFINITY_GROUP_STAT_MAPPER
-            )
+        return new HashSet<>(namedParameterJdbcTemplate.query(
+            query,
+            new MapSqlParameterSource()
+                .addValue("knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY)
+                .addValue("executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP)
+                .addValue("limit", limit, Types.BIGINT),
+            TASK_NAME_AFFINITY_GROUP_STAT_MAPPER
+        )
         );
     }
 
@@ -201,7 +201,7 @@ public class TaskVirtualQueueBasePlannerRepositoryImpl implements TaskVirtualQue
     public Collection<ShortTaskEntity> loadTasksToPlan(Set<UUID> knownNodes,
                                                        Map<Partition, Integer> partitionToLimits) {
         final String tablePrefix = "afg_tn_";
-        List<Partition> partitions = Lists.newArrayList(partitionToLimits.keySet());
+        List<Partition> partitions = new ArrayList<>(partitionToLimits.keySet());
         String taskToPlanTables = IntStream.range(0, partitions.size())
             .mapToObj(i -> {
                     Partition partition = partitions.get(i);
@@ -226,13 +226,13 @@ public class TaskVirtualQueueBasePlannerRepositoryImpl implements TaskVirtualQue
             .replace("{TASK_TO_PLAN_SUB_SELECT_TABLES}", taskToPlanTables)
             .replace("{TASK_TO_PLAN_AGGREGATED_TABLE}", taskToPlanAggregatedTable);
 
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(
-                query,
-                new MapSqlParameterSource()
-                    .addValue("knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY)
-                    .addValue("executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP),
-                SHORT_TASK_ROW_MAPPER
-            )
+        return new HashSet<>(namedParameterJdbcTemplate.query(
+            query,
+            new MapSqlParameterSource()
+                .addValue("knownNodes", JdbcTools.UUIDsToStringArray(knownNodes), Types.ARRAY)
+                .addValue("executionDateUtc", LocalDateTime.now(clock), Types.TIMESTAMP),
+            SHORT_TASK_ROW_MAPPER
+        )
         );
     }
 }

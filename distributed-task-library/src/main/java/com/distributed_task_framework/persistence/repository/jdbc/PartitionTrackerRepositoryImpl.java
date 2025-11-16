@@ -3,8 +3,6 @@ package com.distributed_task_framework.persistence.repository.jdbc;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.persistence.repository.PartitionTrackerRepository;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +10,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,11 +39,10 @@ public class PartitionTrackerRepositoryImpl implements PartitionTrackerRepositor
     //SUPPOSED USED INDEXES: not use index at all, but check very quickly
     @Override
     public Set<Partition> activePartitions() {
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(
-                SELECT_ACTIVE_PARTITIONS,
-                PARTITION_MAPPER
-            )
-        );
+        return new HashSet<>(namedParameterJdbcTemplate.query(
+            SELECT_ACTIVE_PARTITIONS,
+            PARTITION_MAPPER
+        ));
     }
 
 
@@ -70,7 +69,7 @@ public class PartitionTrackerRepositoryImpl implements PartitionTrackerRepositor
     @Override
     public Set<Partition> filterInReadyVirtualQueue(Set<Partition> entities) {
         final String tablePrefix = "partition_";
-        List<Partition> partitionList = Lists.newArrayList(entities);
+        List<Partition> partitionList = new ArrayList<>(entities);
         String activePartitionTables = IntStream.range(0, partitionList.size())
             .mapToObj(i -> {
                     Partition partition = partitionList.get(i);
@@ -95,6 +94,6 @@ public class PartitionTrackerRepositoryImpl implements PartitionTrackerRepositor
 
         log.debug("filterInReadyVirtualQueue(): query=[{}]", query);
 
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(query, PARTITION_MAPPER));
+        return new HashSet<>(namedParameterJdbcTemplate.query(query, PARTITION_MAPPER));
     }
 }

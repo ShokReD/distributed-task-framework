@@ -13,10 +13,7 @@ import com.distributed_task_framework.service.internal.PlannerService;
 import com.distributed_task_framework.service.internal.TaskRegistryService;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.distributed_task_framework.utils.SetUtils;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Meter;
@@ -33,7 +30,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ReflectionUtils;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +63,7 @@ public class VirtualQueueStatHelper {
     TaskMapper taskMapper;
     MetricHelper metricHelper;
     MeterRegistry meterRegistry;
-    AtomicReference<ImmutableList<AggregatedTaskStat>> aggregatedStatRef;
+    AtomicReference<List<AggregatedTaskStat>> aggregatedStatRef;
     Map<UUID, Meter.Id> overloadedNodeToMeter;
     AtomicReference<Set<UUID>> overloadedNodesRef;
     ScheduledExecutorService watchdogExecutorService;
@@ -92,7 +91,7 @@ public class VirtualQueueStatHelper {
         this.taskMapper = taskMapper;
         this.metricHelper = metricHelper;
         this.meterRegistry = meterRegistry;
-        this.aggregatedStatRef = new AtomicReference<>(ImmutableList.of());
+        this.aggregatedStatRef = new AtomicReference<>(List.of());
         this.overloadedNodeToMeter = new HashMap<>();
         this.overloadedNodesRef = new AtomicReference<>(Set.of());
         this.aggregatedStatCalculationTimer = metricHelper.timer("aggregatedStatCalculation", "time");
@@ -104,15 +103,16 @@ public class VirtualQueueStatHelper {
         this.commonManagerTags = List.of(Tag.of("group", PlannerGroups.VQB_MANAGER.getName()));
         this.commonPlannerTags = List.of(Tag.of("group", PlannerGroups.DEFAULT.getName()));
         this.watchdogExecutorService = Executors.newSingleThreadScheduledExecutor(
-            new ThreadFactoryBuilder()
-                .setDaemon(false)
-                .setNameFormat("vq-stat")
-                .setUncaughtExceptionHandler((t, e) -> {
+            r -> {
+                var thread = new Thread(r);
+                thread.setDaemon(false);
+                thread.setName("vq-stat");
+                thread.setUncaughtExceptionHandler((t, e) -> {
                     log.error("virtualQueueStat(): error trying to calculate stat", e);
                     ReflectionUtils.rethrowRuntimeException(e);
-                })
-                .build()
-        );
+                });
+                return thread;
+            });
     }
 
     @PostConstruct
@@ -136,7 +136,7 @@ public class VirtualQueueStatHelper {
         log.info("shutdown(): completed shutdown stat calculator");
     }
 
-    @VisibleForTesting
+    // visible for testing
     void calculateAggregatedStat() {
         if (plannerService.isActive()) {
             calculateAggregatedStatForActiveState();
@@ -146,14 +146,14 @@ public class VirtualQueueStatHelper {
     }
 
     private void calculateAggregatedStatForInactiveState() {
-        ImmutableList<AggregatedTaskStat> zeroAggregatedStat = aggregatedStatRef.get().stream()
+        var zeroAggregatedStat = aggregatedStatRef.get().stream()
             .map(aggregatedTaskStat -> aggregatedTaskStat.toBuilder()
                 .number(0)
                 .build()
             )
             .collect(Collectors.collectingAndThen(
                 Collectors.toList(),
-                ImmutableList::copyOf
+                Collections::unmodifiableList
             ));
 
         aggregatedStatRef.set(zeroAggregatedStat);
@@ -174,7 +174,7 @@ public class VirtualQueueStatHelper {
                 )
             );
 
-            aggregatedStatRef.set(ImmutableList.copyOf(aggregatedTaskStat));
+            aggregatedStatRef.set(Collections.unmodifiableList(aggregatedTaskStat));
 
             updateAllTaskStat();
             updateNotToPlanTaskStat();
@@ -208,12 +208,13 @@ public class VirtualQueueStatHelper {
     }
 
     private Collection<Tag> buildTags(AggregatedTaskStat stat) {
-        return ImmutableList.<Tag>builder()
-            .addAll(commonManagerTags)
-            .add(metricHelper.buildAffinityGroupTag(stat.getAffinityGroupName()))
-            .add(metricHelper.buildVirtualQueueTag(stat.getVirtualQueue()))
-            .add(Tag.of("task_name", stat.getTaskName()))
-            .build();
+        return Collections.unmodifiableList(
+            new ArrayList<>(commonManagerTags) {{
+                add(metricHelper.buildAffinityGroupTag(stat.getAffinityGroupName()));
+                add(metricHelper.buildVirtualQueueTag(stat.getVirtualQueue()));
+                add(Tag.of("task_name", stat.getTaskName()));
+            }}
+        );
     }
 
     private record AggregatedTaskStatKey(
@@ -265,16 +266,16 @@ public class VirtualQueueStatHelper {
                 )
             ));
 
-        movedTasksStat.forEach((virtualQueue, movedTaskStat) ->
-            {
+        movedTasksStat.forEach((virtualQueue, movedTaskStat) -> {
                 for (var entry : movedTaskStat.entrySet()) {
                     Partition partition = entry.getKey();
-                    List<Tag> tags = ImmutableList.<Tag>builder()
-                        .addAll(commonManagerTags)
-                        .add(metricHelper.buildVirtualQueueTag(virtualQueue))
-                        .add(metricHelper.buildAffinityGroupTag(partition.getAffinityGroup()))
-                        .add(Tag.of("task_name", partition.getTaskName()))
-                        .build();
+                    var tags = Collections.unmodifiableList(
+                        new ArrayList<>(commonManagerTags) {{
+                            add(metricHelper.buildVirtualQueueTag(virtualQueue));
+                            add(metricHelper.buildAffinityGroupTag(partition.getAffinityGroup()));
+                            add(Tag.of("task_name", partition.getTaskName()));
+                        }}
+                    );
                     Counter.builder(movedCounterName)
                         .tags(tags)
                         .register(meterRegistry)
@@ -297,12 +298,11 @@ public class VirtualQueueStatHelper {
 
         for (var entry : plannedTaskStat.entrySet()) {
             final PlannedTask plannedTask = entry.getKey();
-            List<Tag> tags = ImmutableList.<Tag>builder()
-                .addAll(commonPlannerTags)
-                .add(metricHelper.buildAffinityGroupTag(plannedTask.affinityGroup()))
-                .add(Tag.of("task_name", plannedTask.taskName()))
-                .add(Tag.of("worker_id", plannedTask.workerId().toString()))
-                .build();
+            List<Tag> tags = Collections.unmodifiableList(new ArrayList<>(commonPlannerTags) {{
+                add(metricHelper.buildAffinityGroupTag(plannedTask.affinityGroup()));
+                add(Tag.of("task_name", plannedTask.taskName()));
+                add(Tag.of("worker_id", plannedTask.workerId().toString()));
+            }});
             Counter.builder(plannedCounterName)
                 .tags(tags)
                 .register(meterRegistry)
@@ -313,18 +313,16 @@ public class VirtualQueueStatHelper {
     public void overloadedNodes(Set<UUID> allNodes, Set<UUID> overloadedNodes) {
         overloadedNodesRef.set(overloadedNodes);
 
-        var unknownNodesWithMeter = Sets.newHashSet(Sets.difference(overloadedNodeToMeter.keySet(), allNodes));
+        var unknownNodesWithMeter = SetUtils.difference(overloadedNodeToMeter.keySet(), allNodes);
         deleteMeters(unknownNodesWithMeter);
 
         allNodes.forEach(node -> overloadedNodeToMeter.computeIfAbsent(node, k -> Gauge.builder(
                     overloadedNodesGaugeName,
                     () -> overloadedNodesRef.get().contains(node) ? NodeLoading.OVERLOADED.getValue() : NodeLoading.NORMAL.getValue()
                 )
-                .tags(ImmutableList.<Tag>builder()
-                    .addAll(commonPlannerTags)
-                    .add(Tag.of("nodeId", node.toString()))
-                    .build()
-                )
+                .tags(Collections.unmodifiableList(new ArrayList<>(commonPlannerTags) {{
+                    add(Tag.of("nodeId", node.toString()));
+                }}))
                 .register(meterRegistry)
                 .getId()
         ));

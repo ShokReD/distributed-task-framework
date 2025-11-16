@@ -4,9 +4,6 @@ import com.distributed_task_framework.persistence.entity.ShortTaskEntity;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.persistence.repository.TaskExtendedRepository;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
@@ -363,7 +360,7 @@ public class TaskPopulateAndVerify {
         return "" + id;
     }
 
-    public List<PopulationSpec> makePopulationSpec(ImmutableMap<Range<Integer>, GenerationSpec> generateSpecs) {
+    public List<PopulationSpec> makePopulationSpec(Map<Range<Integer>, GenerationSpec> generateSpecs) {
         List<PopulationSpec> result = new ArrayList<>();
         for (var entity : generateSpecs.entrySet()) {
             int fromInclude = entity.getKey().lowerEndpoint();
@@ -399,7 +396,7 @@ public class TaskPopulateAndVerify {
                             affinity = null;
                         }
 
-                        List<String> taskNames = Lists.newArrayList();
+                        List<String> taskNames = new ArrayList<>();
                         if (spec.getFixedTaskName() != null) {
                             taskNames.add(spec.fixedTaskName);
                         } else {
@@ -433,7 +430,7 @@ public class TaskPopulateAndVerify {
                                            int toExclude,
                                            VirtualQueue virtualQueue,
                                            List<PopulationSpec> populationSpecs) {
-        Map<PopulationSpec, Integer> taskIndexMap = Maps.newHashMap();
+        Map<PopulationSpec, Integer> taskIndexMap = new HashMap<>();
         int size = toExclude - fromInclude;
         List<TaskEntity> taskEntities = IntStream.range(fromInclude, toExclude)
             .mapToObj(i -> {

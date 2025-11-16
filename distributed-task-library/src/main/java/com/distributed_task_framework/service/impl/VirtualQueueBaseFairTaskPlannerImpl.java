@@ -7,6 +7,7 @@ import com.distributed_task_framework.model.NodeCapacity;
 import com.distributed_task_framework.model.NodeLoading;
 import com.distributed_task_framework.model.NodeTaskActivity;
 import com.distributed_task_framework.model.PartitionStat;
+import com.distributed_task_framework.model.TaskNameAndNode;
 import com.distributed_task_framework.persistence.entity.ShortTaskEntity;
 import com.distributed_task_framework.persistence.repository.PlannerRepository;
 import com.distributed_task_framework.persistence.repository.TaskRepository;
@@ -18,9 +19,6 @@ import com.distributed_task_framework.service.internal.PlannerGroups;
 import com.distributed_task_framework.service.internal.TaskRegistryService;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.settings.TaskSettings;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Table;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import lombok.AccessLevel;
@@ -31,8 +29,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -308,7 +308,7 @@ public class VirtualQueueBaseFairTaskPlannerImpl extends AbstractPlannerImpl imp
     }
 
     private Collection<ShortTaskEntity> assignNodeToTasks(Collection<ShortTaskEntity> unplannedActualTasks,
-                                                          Table<String, UUID, Integer> taskNameNodeQuota) {
+                                                          Map<TaskNameAndNode, Integer> taskNameNodeQuota) {
         return unplannedActualTasks.stream()
             .map(shortTaskEntity -> {
                 String taskName = shortTaskEntity.getTaskName();
@@ -352,7 +352,7 @@ public class VirtualQueueBaseFairTaskPlannerImpl extends AbstractPlannerImpl imp
 
     private Map<String, Integer> applyClusterTaskLimits(Set<String> potentialTasksToAssign,
                                                         Map<String, Integer> currentActiveTasksByName) {
-        Map<String, Integer> limits = Maps.newHashMap();
+        Map<String, Integer> limits = new HashMap<>();
         for (String taskName : potentialTasksToAssign) {
             int allowedTaskNumber = calculateAllowedTaskNumber(taskName, currentActiveTasksByName);
             if (allowedTaskNumber == 0) {
@@ -380,7 +380,7 @@ public class VirtualQueueBaseFairTaskPlannerImpl extends AbstractPlannerImpl imp
 
     private List<NodeCapacity> calculateNodeCapacities(Map<UUID, Set<String>> availableTaskByNode,
                                                        List<NodeTaskActivity> nodeTaskActivities) {
-        List<NodeCapacity> result = Lists.newArrayList();
+        List<NodeCapacity> result = new ArrayList<>();
         int maxParallelTasksInNode = commonSettings.getWorkerManagerSettings().getMaxParallelTasksInNode();
         for (var entry : availableTaskByNode.entrySet()) {
             UUID node = entry.getKey();

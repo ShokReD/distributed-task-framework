@@ -8,8 +8,6 @@ import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.service.internal.PlannerService;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
@@ -63,26 +61,27 @@ public abstract class AbstractPlannerImpl implements PlannerService {
         this.planningTime = metricHelper.timer(List.of("planner", "time"), commonTags);
         this.optLockErrorCounter = metricHelper.counter(List.of("planner", "optlock", "error"), commonTags);
         this.plannedTaskCounter = metricHelper.counter(List.of("planner", "tasks", "planned"), commonTags);
-        this.watchdogExecutorService = Executors.newSingleThreadScheduledExecutor(
-            new ThreadFactoryBuilder()
-                .setDaemon(false)
-                .setNameFormat("shed-watch-%d")
-                .setUncaughtExceptionHandler((t, e) -> {
-                    log.error("scheduleWatchdog(): error when watch by schedule table", e);
-                    ReflectionUtils.rethrowRuntimeException(e);
-                })
-                .build()
-        );
+        this.watchdogExecutorService = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            var thread = new Thread(runnable);
+            thread.setDaemon(false);
+            thread.setName("shed-watch-" + thread.getId());
+            thread.setUncaughtExceptionHandler((t, e) -> {
+                log.error("scheduleWatchdog(): error when watch by schedule table", e);
+                ReflectionUtils.rethrowRuntimeException(e);
+            });
+            return thread;
+        });
         this.plannerExecutorService = Executors.newSingleThreadExecutor(
-            new ThreadFactoryBuilder()
-                .setDaemon(false)
-                .setNameFormat("planner-" + shortName() + "-%d")
-                .setUncaughtExceptionHandler((t, e) -> {
+            runnable -> {
+                var thread = new Thread(runnable);
+                thread.setDaemon(false);
+                thread.setName("planner-" + thread.getId());
+                thread.setUncaughtExceptionHandler((t, e) -> {
                     log.error("planner(): error when run planning", e);
                     ReflectionUtils.rethrowRuntimeException(e);
-                })
-                .build()
-        );
+                });
+                return thread;
+            });
     }
 
     protected abstract String name();
@@ -139,7 +138,7 @@ public abstract class AbstractPlannerImpl implements PlannerService {
         return planningLoopTask.get() != null;
     }
 
-    @VisibleForTesting
+    // visible for testing
     void watchdog() {
         Future<?> planningLoopFuture = planningLoopTask.get();
         if (!hasToBeActive()) {
@@ -207,7 +206,7 @@ public abstract class AbstractPlannerImpl implements PlannerService {
     }
 
     @SuppressWarnings("ConstantConditions")
-    @VisibleForTesting
+        // visible for testing
     void planningLoop() {
         log.info("planningLoop(): has been started for \"{}\"", name());
         beforeStartLoop();

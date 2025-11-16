@@ -7,7 +7,6 @@ import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.repository.TaskExtendedRepository;
 import com.distributed_task_framework.utils.ComparatorUtils;
 import com.distributed_task_framework.utils.JdbcTools;
-import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +18,7 @@ import java.sql.Types;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -261,13 +261,13 @@ public class TaskExtendedRepositoryImpl implements TaskExtendedRepository {
             .map(IdVersionEntity::getId)
             .toList();
         var taskVersions = taskIdVersions.stream().map(IdVersionEntity::getVersion).toList();
-        return Sets.newHashSet(namedParameterJdbcTemplate.query(
-                DELETE_BY_IDS_VERSIONS,
-                new MapSqlParameterSource()
-                    .addValue(TaskEntity.Fields.id, JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY)
-                    .addValue(TaskEntity.Fields.version, JdbcTools.toLongArray(taskVersions), Types.ARRAY),
-                IdVersionEntity.ID_VERSION_ROW_MAPPER
-            )
+        return new HashSet<>(namedParameterJdbcTemplate.query(
+            DELETE_BY_IDS_VERSIONS,
+            new MapSqlParameterSource()
+                .addValue(TaskEntity.Fields.id, JdbcTools.UUIDsToStringArray(taskIds), Types.ARRAY)
+                .addValue(TaskEntity.Fields.version, JdbcTools.toLongArray(taskVersions), Types.ARRAY),
+            IdVersionEntity.ID_VERSION_ROW_MAPPER
+        )
         );
     }
 

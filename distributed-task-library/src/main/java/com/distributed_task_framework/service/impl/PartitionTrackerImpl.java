@@ -6,7 +6,7 @@ import com.distributed_task_framework.persistence.repository.PartitionRepository
 import com.distributed_task_framework.persistence.repository.PartitionTrackerRepository;
 import com.distributed_task_framework.service.internal.PartitionTracker;
 import com.distributed_task_framework.settings.CommonSettings;
-import com.google.common.collect.Sets;
+import com.distributed_task_framework.utils.SetUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
@@ -48,9 +49,9 @@ public class PartitionTrackerImpl implements PartitionTracker {
         var partitionEntities = partitionMapper.asEntities(partitions, currentTimeWindow());
         var existedPartitionEntities = partitionRepository.filterExisted(partitionEntities);
 
-        var toAdd = Sets.newHashSet(Sets.difference(
-            Sets.newHashSet(partitionEntities),
-            Sets.newHashSet(existedPartitionEntities))
+        var toAdd = SetUtils.difference(
+            new HashSet<>(partitionEntities),
+            new HashSet<>(existedPartitionEntities)
         );
         if (!toAdd.isEmpty()) {
             partitionRepository.saveOrUpdateBatch(toAdd);
@@ -77,7 +78,7 @@ public class PartitionTrackerImpl implements PartitionTracker {
 
             var previousPartitions = partitionMapper.fromEntities(previousPartitionEntities);
             var movedPartitions = partitionTrackerRepository.filterInReadyVirtualQueue(previousPartitions);
-            var removedPartitions = Sets.newHashSet(Sets.difference(previousPartitions, movedPartitions));
+            var removedPartitions = SetUtils.difference(previousPartitions, movedPartitions);
             if (!removedPartitions.isEmpty()) {
                 log.info("gcIfNecessary(): removedPartitions=[{}]", removedPartitions);
             }

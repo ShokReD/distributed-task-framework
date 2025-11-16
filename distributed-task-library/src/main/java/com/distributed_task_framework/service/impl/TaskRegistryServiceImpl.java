@@ -12,11 +12,7 @@ import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.task.Task;
 import com.distributed_task_framework.task.common.RemoteStubTask;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.distributed_task_framework.utils.SetUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.AccessLevel;
@@ -29,20 +25,23 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class TaskRegistryServiceImpl implements TaskRegistryService {
-    ConcurrentMap<TaskDef<?>, RegisteredTask<?>> registeredTasks = Maps.newConcurrentMap();
+    ConcurrentMap<TaskDef<?>, RegisteredTask<?>> registeredTasks = new ConcurrentHashMap<>();
     CommonSettings commonSettings;
     RegisteredTaskRepository registeredTaskRepository;
     PlatformTransactionManager transactionManager;
@@ -57,14 +56,17 @@ public class TaskRegistryServiceImpl implements TaskRegistryService {
         this.registeredTaskRepository = registeredTaskRepository;
         this.transactionManager = transactionManager;
         this.clusterProvider = clusterProvider;
-        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
-            .setDaemon(false)
-            .setNameFormat("node-st-upd-%d")
-            .setUncaughtExceptionHandler((t, e) -> {
-                log.error("nodeStateUpdaterErrorHandler(): error when try to update node state", e);
-                ReflectionUtils.rethrowRuntimeException(e);
-            })
-            .build()
+        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
+            runnable -> {
+                var thread = new Thread(runnable);
+                thread.setDaemon(false);
+                thread.setName("node-st-upd-" + thread.getId());
+                thread.setUncaughtExceptionHandler((t, e) -> {
+                    log.error("nodeStateUpdaterErrorHandler(): error when try to update node state", e);
+                    ReflectionUtils.rethrowRuntimeException(e);
+                });
+                return thread;
+            }
         );
     }
 
@@ -176,7 +178,7 @@ public class TaskRegistryServiceImpl implements TaskRegistryService {
     @Cacheable(cacheNames = "commonRegistryCacheManager", key = "#root.methodName")
     @Override
     public Map<UUID, Set<String>> getRegisteredLocalTaskInCluster() {
-        return Lists.newArrayList(registeredTaskRepository.findAll()).stream()
+        return StreamSupport.stream(registeredTaskRepository.findAll().spliterator(), false)
             .collect(Collectors.groupingBy(
                 RegisteredTaskEntity::getNodeStateId,
                 Collectors.mapping(
@@ -186,7 +188,7 @@ public class TaskRegistryServiceImpl implements TaskRegistryService {
             ));
     }
 
-    @VisibleForTesting
+    // visible for testing
     void publishOrUpdateTasksInCluster() {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.executeWithoutResult(status -> doPublishOrUpdateTasksInCluster());
@@ -197,7 +199,7 @@ public class TaskRegistryServiceImpl implements TaskRegistryService {
             return;
         }
         var nodeId = clusterProvider.nodeId();
-        var publishedCurrentTasks = Sets.newHashSet(registeredTaskRepository.findByNodeStateId(nodeId));
+        var publishedCurrentTasks = new HashSet<>(registeredTaskRepository.findByNodeStateId(nodeId));
         var registeredCurrentTasks = this.registeredTasks.keySet().stream()
             .filter(this::isLocal)
             .map(taskDef -> RegisteredTaskEntity.builder()
@@ -208,7 +210,7 @@ public class TaskRegistryServiceImpl implements TaskRegistryService {
             .collect(Collectors.toSet());
 
         boolean hasToBeUpdated = registeredCurrentTasks.size() != publishedCurrentTasks.size() ||
-            Sets.intersection(registeredCurrentTasks, publishedCurrentTasks).size() != publishedCurrentTasks.size();
+            SetUtils.intersection(registeredCurrentTasks, publishedCurrentTasks).size() != publishedCurrentTasks.size();
         if (hasToBeUpdated) {
             log.info(
                 "nodeStateUpdater(): set of registered tasks changed from=[{}], to=[{}]",

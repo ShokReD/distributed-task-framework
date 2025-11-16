@@ -1,13 +1,13 @@
 package com.distributed_task_framework.settings;
 
 import com.google.common.collect.ImmutableRangeMap;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import lombok.Builder;
 import lombok.Value;
 
 import java.net.URL;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 @Value
@@ -239,7 +239,7 @@ public class CommonSettings {
          * Used in order to execute remote (outside of current cluster) tasks.
          */
         @Builder.Default
-        Map<String, URL> appToUrl = Maps.newHashMap();
+        Map<String, URL> appToUrl = new HashMap<>();
     }
 
     /**

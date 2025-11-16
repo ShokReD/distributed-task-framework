@@ -7,7 +7,6 @@ import com.distributed_task_framework.persistence.entity.IdVersionEntity;
 import com.distributed_task_framework.persistence.entity.ShortTaskEntity;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.annotations.VisibleForTesting;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -31,7 +30,7 @@ public interface VirtualQueueManagerPlannerRepository {
 
     List<ShortTaskEntity> moveParkedToReady(Collection<IdVersionEntity> idVersionEntities);
 
-    @VisibleForTesting
+    // visible for testing
     int countOfTasksInVirtualQueue(VirtualQueue virtualQueue);
 
     /**

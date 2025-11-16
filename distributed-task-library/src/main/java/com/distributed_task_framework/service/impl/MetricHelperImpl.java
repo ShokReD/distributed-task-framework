@@ -4,8 +4,6 @@ import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.utils.StringUtils;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -16,6 +14,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -51,7 +51,7 @@ public class MetricHelperImpl implements MetricHelper {
 
     @Override
     public Timer timer(String... pathsName) {
-        return timer(Lists.newArrayList(pathsName), List.of());
+        return timer(Arrays.stream(pathsName).toList(), List.of());
     }
 
     @Override
@@ -65,17 +65,15 @@ public class MetricHelperImpl implements MetricHelper {
 
     @Override
     public Timer timer(List<String> pathsName, List<Tag> tags, TaskEntity taskEntity) {
-        List<Tag> allTags = ImmutableList.<Tag>builder()
-            .addAll(tags)
-            .add(buildAffinityGroupTag(taskEntity.getAffinityGroup()))
-            .add(Tag.of("task_name", taskEntity.getTaskName()))
-            .build();
+        var allTags = new ArrayList<>(tags);
+        allTags.add(buildAffinityGroupTag(taskEntity.getAffinityGroup()));
+        allTags.add(Tag.of("task_name", taskEntity.getTaskName()));
         return timer(pathsName, allTags);
     }
 
     @Override
     public Counter counter(String... pathsName) {
-        return counter(Lists.newArrayList(pathsName), List.of());
+        return counter(Arrays.stream(pathsName).toList(), List.of());
     }
 
     @Override
@@ -87,11 +85,9 @@ public class MetricHelperImpl implements MetricHelper {
 
     @Override
     public Counter counter(List<String> pathsName, List<Tag> tags, TaskEntity taskEntity) {
-        List<Tag> allTags = ImmutableList.<Tag>builder()
-            .addAll(tags)
-            .add(buildAffinityGroupTag(taskEntity.getAffinityGroup()))
-            .add(Tag.of("task_name", taskEntity.getTaskName()))
-            .build();
+        var allTags = new ArrayList<>(tags);
+        allTags.add(buildAffinityGroupTag(taskEntity.getAffinityGroup()));
+        allTags.add(Tag.of("task_name", taskEntity.getTaskName()));
         return counter(pathsName, allTags);
     }
 

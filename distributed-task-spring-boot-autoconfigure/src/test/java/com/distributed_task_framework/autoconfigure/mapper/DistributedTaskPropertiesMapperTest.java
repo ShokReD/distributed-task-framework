@@ -12,7 +12,6 @@ import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mapstruct.factory.Mappers;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.net.URL;
@@ -24,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @ExtendWith(MockitoExtension.class)
 class DistributedTaskPropertiesMapperTest {
-    private final DistributedTaskPropertiesMapper distributedTaskPropertiesMapper = Mappers.getMapper(DistributedTaskPropertiesMapper.class);
+    private final DistributedTaskPropertiesMapper distributedTaskPropertiesMapper = new DistributedTaskPropertiesMapper();
 
     @SneakyThrows
     @Test

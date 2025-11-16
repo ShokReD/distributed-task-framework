@@ -2,7 +2,6 @@ package com.distributed_task_framework.autoconfigure;
 
 import com.distributed_task_framework.autoconfigure.annotation.DtfDataSource;
 import com.distributed_task_framework.autoconfigure.mapper.DistributedTaskPropertiesMapper;
-import com.distributed_task_framework.autoconfigure.mapper.DistributedTaskPropertiesMapperImpl;
 import com.distributed_task_framework.mapper.CommandMapper;
 import com.distributed_task_framework.mapper.NodeStateMapper;
 import com.distributed_task_framework.mapper.PartitionMapper;
@@ -305,7 +304,7 @@ public class DistributedTaskAutoconfigure {
     @Bean
     @ConditionalOnMissingBean
     public DistributedTaskPropertiesMapper taskParameterMapper() {
-        return new DistributedTaskPropertiesMapperImpl();
+        return new DistributedTaskPropertiesMapper();
     }
 
     @Bean

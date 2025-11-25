@@ -1,10 +1,10 @@
 package com.distributed_task_framework;
 
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.persistence.entity.ShortTaskEntity;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.persistence.repository.TaskExtendedRepository;
-import com.google.common.collect.Range;
 import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -360,7 +360,7 @@ public class TaskPopulateAndVerify {
         return "" + id;
     }
 
-    public List<PopulationSpec> makePopulationSpec(Map<Range<Integer>, GenerationSpec> generateSpecs) {
+    public List<PopulationSpec> makePopulationSpec(Map<IntRange, GenerationSpec> generateSpecs) {
         List<PopulationSpec> result = new ArrayList<>();
         for (var entity : generateSpecs.entrySet()) {
             int fromInclude = entity.getKey().lowerEndpoint();
@@ -464,13 +464,6 @@ public class TaskPopulateAndVerify {
         return taskExtendedRepository.saveAll(taskEntities);
     }
 
-    private static LocalDateTime truncateLocalDateTime(LocalDateTime time) {
-        if (time == null)
-            return null;
-
-        return time.truncatedTo(ChronoUnit.MICROS);
-    }
-
     private LocalDateTime now() {
         // On Linux it has nanoseconds, which after rounding in DB leads to non-equal dates
         // https://stackoverflow.com/questions/65594874/java-15-nanoseconds-precision-causing-issues-on-linux-environment
@@ -478,17 +471,11 @@ public class TaskPopulateAndVerify {
             .truncatedTo(ChronoUnit.MICROS);
     }
 
-    public Set<UUID> knownNodes(List<TaskPopulateAndVerify.PopulationSpec> knownPopulationSpecs) {
-        return knownPopulationSpecs.stream()
-            .map(TaskPopulateAndVerify.PopulationSpec::getAssignedWorker)
-            .collect(Collectors.toSet());
-    }
-
     @Value
     @Builder(toBuilder = true)
     public static class VerifyVirtualQueueContext {
-        Range<Integer> populationSpecRange;
-        Map<Range<Integer>, TaskPopulateAndVerify.ExpectedVirtualQueue> expectedVirtualQueueByRange;
+        IntRange populationSpecIntRange;
+        Map<IntRange, TaskPopulateAndVerify.ExpectedVirtualQueue> expectedVirtualQueueByRange;
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs;
         Collection<TaskEntity> affectedTaskEntities;
         List<ShortTaskEntity> movedShortTaskEntities;
@@ -497,8 +484,8 @@ public class TaskPopulateAndVerify {
 
     public Map<VirtualQueue, List<TaskEntity>> verifyVirtualQueue(VerifyVirtualQueueContext ctx) {
         var groupedTasks = new HashMap<VirtualQueue, List<TaskEntity>>();
-        int fromPopulationSpecInclude = ctx.getPopulationSpecRange().lowerEndpoint();
-        int toPopulationSpecExclude = ctx.getPopulationSpecRange().upperEndpoint();
+        int fromPopulationSpecInclude = ctx.getPopulationSpecIntRange().lowerEndpoint();
+        int toPopulationSpecExclude = ctx.getPopulationSpecIntRange().upperEndpoint();
         Set<Map.Entry<String, String>> testedAffinityGroupAndAffinity =
             ctx.getPopulationSpecs().subList(fromPopulationSpecInclude, toPopulationSpecExclude).stream()
                 .map(spec -> new AbstractMap.SimpleEntry<>(spec.getAffinityGroup(), spec.getAffinity()) {

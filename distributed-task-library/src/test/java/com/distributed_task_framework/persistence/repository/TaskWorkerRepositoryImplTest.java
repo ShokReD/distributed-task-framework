@@ -2,10 +2,10 @@ package com.distributed_task_framework.persistence.repository;
 
 import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.comparator.RoundingLocalDateTimeComparator;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.model.TaskId;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -38,8 +38,8 @@ class TaskWorkerRepositoryImplTest extends BaseRepositoryTest {
         var workerId = TaskPopulateAndVerify.getNode(0);
         var foreignWorkerId = TaskPopulateAndVerify.getNode(1);
         var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.withWorker(2, workerId),
-                Range.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.withWorker(2, foreignWorkerId)
+                IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.withWorker(2, workerId),
+                IntRange.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.withWorker(2, foreignWorkerId)
             )
         );
         var populateNewTasks = taskPopulateAndVerify.populate(0, 10, VirtualQueue.NEW, knownPopulationSpecs);
@@ -72,8 +72,8 @@ class TaskWorkerRepositoryImplTest extends BaseRepositoryTest {
     void filterCanceled() {
         //when
         var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one(),
-                Range.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.oneCanceled()
+                IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one(),
+                IntRange.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.oneCanceled()
             )
         );
         var populateNewTasks = taskPopulateAndVerify.populate(0, 10, VirtualQueue.NEW, knownPopulationSpecs);

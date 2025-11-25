@@ -3,9 +3,9 @@ package com.distributed_task_framework.persistence.repository;
 import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.model.AffinityGroupStat;
 import com.distributed_task_framework.model.AffinityGroupWrapper;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.persistence.entity.IdVersionEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,7 +40,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         //when
         setFixedTime();
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.NEW, populationSpecs);
@@ -68,22 +69,22 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
 
         setFixedTime(firstPoint.toSeconds());
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.NEW, populationSpecs);
 
         setFixedTime(secondPoint.toSeconds());
         populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(1, 2), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.NEW, populationSpecs);
 
         setFixedTime(thirdPoint.toSeconds());
         populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(2, 3), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
-                Range.closedOpen(3, 4), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(2, 3), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
+                IntRange.closedOpen(3, 4), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.NEW, populationSpecs);
@@ -108,9 +109,9 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         setFixedTime();
         //total=10 affinityGroups
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 6), TaskPopulateAndVerify.GenerationSpec.one(),
-                Range.closedOpen(6, 7), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
-                Range.closedOpen(7, 10), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(0, 6), TaskPopulateAndVerify.GenerationSpec.one(),
+                IntRange.closedOpen(6, 7), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
+                IntRange.closedOpen(7, 10), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
 
@@ -139,7 +140,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         IntStream.range(7, 10)
             .forEach(group -> assertThat(affinityGroupToNumber.getOrDefault(getAffinityGroup(group), 0)).isEqualTo(limit));
         assertThat(affinityGroupStats).anyMatch(affinityGroupStat -> affinityGroupStat.getAffinityGroupName() == null);
-        assertThat(Lists.newArrayList(affinityGroupStats))
+        assertThat(new ArrayList<>(affinityGroupStats))
             .allMatch(affinityGroupStat -> limit == affinityGroupStat.getNumber());
     }
 
@@ -149,9 +150,9 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         final int limit = 6;
         //setFixedTime();
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-            Range.closedOpen(0, 2), TaskPopulateAndVerify.GenerationSpec.one(),
-            Range.closedOpen(2, 4), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
-            Range.closedOpen(4, 6), TaskPopulateAndVerify.GenerationSpec.one()
+            IntRange.closedOpen(0, 2), TaskPopulateAndVerify.GenerationSpec.one(),
+            IntRange.closedOpen(2, 4), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
+            IntRange.closedOpen(4, 6), TaskPopulateAndVerify.GenerationSpec.one()
         ));
         taskPopulateAndVerify.populate(0, 1, VirtualQueue.READY, populationSpecs);
         taskPopulateAndVerify.populate(1, 2, VirtualQueue.PARKED, populationSpecs);
@@ -168,9 +169,9 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
 
         //verify
         TaskPopulateAndVerify.VerifyVirtualQueueContext baseVerifyCtx = TaskPopulateAndVerify.VerifyVirtualQueueContext.builder()
-            .populationSpecRange(Range.closedOpen(0, 2)) // group range
+            .populationSpecIntRange(IntRange.closedOpen(0, 2)) // group range
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, limit), // tasks in each group
+                IntRange.closedOpen(0, limit), // tasks in each group
                 TaskPopulateAndVerify.ExpectedVirtualQueue.moved(VirtualQueue.PARKED)
             ))
             .populationSpecs(populationSpecs)
@@ -181,21 +182,21 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         taskPopulateAndVerify.verifyVirtualQueue(baseVerifyCtx);
 
         taskPopulateAndVerify.verifyVirtualQueue(baseVerifyCtx.toBuilder()
-            .populationSpecRange(Range.closedOpen(2, 4)) // group range
+            .populationSpecIntRange(IntRange.closedOpen(2, 4)) // group range
             .expectedVirtualQueueByRange(Map.of(
                 //we have limit = 6, 1 affinity group (default) and 2 type of tasks => limit / 2
-                Range.closedOpen(0, limit / 2),
+                IntRange.closedOpen(0, limit / 2),
                 TaskPopulateAndVerify.ExpectedVirtualQueue.moved(VirtualQueue.READY)
             ))
             .build()
         );
 
         taskPopulateAndVerify.verifyVirtualQueue(baseVerifyCtx.toBuilder()
-            .populationSpecRange(Range.closedOpen(4, 6)) // group range
+            .populationSpecIntRange(IntRange.closedOpen(4, 6)) // group range
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, 1), // tasks in each group
+                IntRange.closedOpen(0, 1), // tasks in each group
                 TaskPopulateAndVerify.ExpectedVirtualQueue.moved(VirtualQueue.READY),
-                Range.closedOpen(1, limit), // tasks in each group
+                IntRange.closedOpen(1, limit), // tasks in each group
                 TaskPopulateAndVerify.ExpectedVirtualQueue.moved(VirtualQueue.PARKED)
             ))
             .build()
@@ -205,11 +206,10 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
     @Test
     void shouldMoveParkedToReady() {
         //when
-        final int limit = 11;
         setFixedTime();
         //total=10 affinityGroups
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 2, VirtualQueue.READY, populationSpecs);
@@ -218,7 +218,7 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         var inDeletedPartOne = taskPopulateAndVerify.populate(0, 10, VirtualQueue.DELETED, populationSpecs);
 
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecWithoutAffinity = taskPopulateAndVerify.makePopulationSpec(Map.of(
-            Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity()
+            IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity()
         ));
         var stillDeletedTaskEntities = taskPopulateAndVerify.populate(0, 1, VirtualQueue.DELETED, populationSpecWithoutAffinity);
 
@@ -242,21 +242,21 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
             .build();
 
         TaskPopulateAndVerify.VerifyVirtualQueueContext stillParkedVerifyCtx = baseVerifyCtx.toBuilder()
-            .populationSpecRange(Range.closedOpen(0, 2)) //range of groups
+            .populationSpecIntRange(IntRange.closedOpen(0, 2)) //range of groups
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, 10), //rage on tasks in each group
+                IntRange.closedOpen(0, 10), //rage on tasks in each group
                 TaskPopulateAndVerify.ExpectedVirtualQueue.untouched(VirtualQueue.PARKED)
             ))
             .build();
         taskPopulateAndVerify.verifyVirtualQueue(stillParkedVerifyCtx);
 
         TaskPopulateAndVerify.VerifyVirtualQueueContext movedToReadyVerifyCtx = baseVerifyCtx.toBuilder()
-            .populationSpecRange(Range.closedOpen(3, 10)) //range of groups
+            .populationSpecIntRange(IntRange.closedOpen(3, 10)) //range of groups
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, 1), //rage on tasks in each group
+                IntRange.closedOpen(0, 1), //rage on tasks in each group
                 TaskPopulateAndVerify.ExpectedVirtualQueue.moved(VirtualQueue.READY),
 
-                Range.closedOpen(1, 10), //rage on tasks in each group
+                IntRange.closedOpen(1, 10), //rage on tasks in each group
                 TaskPopulateAndVerify.ExpectedVirtualQueue.untouched(VirtualQueue.PARKED)
             ))
             .build();
@@ -265,9 +265,9 @@ class VirtualQueueManagerPlannerRepositoryTest extends BaseRepositoryTest {
         TaskPopulateAndVerify.VerifyVirtualQueueContext stillDeletedVerifyCtx = baseVerifyCtx.toBuilder()
             .populationSpecs(populationSpecWithoutAffinity)
             .affectedTaskEntities(stillDeletedTaskEntities)
-            .populationSpecRange(Range.closedOpen(0, 1)) //range of groups
+            .populationSpecIntRange(IntRange.closedOpen(0, 1)) //range of groups
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, 1),
+                IntRange.closedOpen(0, 1),
                 TaskPopulateAndVerify.ExpectedVirtualQueue.untouched(VirtualQueue.DELETED)
             ))
             .build();

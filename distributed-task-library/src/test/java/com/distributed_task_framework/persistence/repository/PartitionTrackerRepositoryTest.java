@@ -1,9 +1,9 @@
 package com.distributed_task_framework.persistence.repository;
 
 import com.distributed_task_framework.TaskPopulateAndVerify;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -28,8 +28,8 @@ class PartitionTrackerRepositoryTest extends BaseRepositoryTest {
     void shouldReturnActivePartitions() {
         //when
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.withoutAffinity(2),
-                Range.closedOpen(1, 3), TaskPopulateAndVerify.GenerationSpec.of(2)
+                IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.withoutAffinity(2),
+                IntRange.closedOpen(1, 3), TaskPopulateAndVerify.GenerationSpec.of(2)
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.READY, populationSpecs);
@@ -73,8 +73,8 @@ class PartitionTrackerRepositoryTest extends BaseRepositoryTest {
     void shouldFilterInReadyVirtualQueue() {
         //when
         List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
-                Range.closedOpen(2, 3), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
+                IntRange.closedOpen(2, 3), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         taskPopulateAndVerify.populate(0, 100, VirtualQueue.READY, populationSpecs);

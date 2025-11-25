@@ -4,13 +4,12 @@ package com.distributed_task_framework.service.impl;
 import com.distributed_task_framework.BaseSpringIntegrationTest;
 import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.model.Capabilities;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.distributed_task_framework.persistence.repository.TaskExtendedRepository;
 import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.service.internal.PartitionTracker;
 import com.distributed_task_framework.service.internal.WorkerManager;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -44,9 +42,6 @@ class VirtualQueueManagerPlannerImplTest extends BaseSpringIntegrationTest {
     //turn off workers
     @MockBean
     WorkerManager workerManager;
-    @Autowired
-    @Qualifier("taskExtendedRepositoryImpl")
-    TaskExtendedRepository taskExtendedRepository;
     @Autowired
     PlatformTransactionManager transactionManager;
     @Autowired
@@ -109,7 +104,7 @@ class VirtualQueueManagerPlannerImplTest extends BaseSpringIntegrationTest {
         //when
         setFixedTime();
         List<TaskPopulateAndVerify.PopulationSpec> readyPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-            Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one())
+            IntRange.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one())
         );
         var alreadyInReady = taskPopulateAndVerify.populate(0, 5, VirtualQueue.READY, readyPopulationSpecs);
         setFixedTime(1_000); //>taskPopulate.populate(5
@@ -133,9 +128,9 @@ class VirtualQueueManagerPlannerImplTest extends BaseSpringIntegrationTest {
         waitForDeletedQueueIsEmpty();
 
         var newToParkedVerifyCtx = TaskPopulateAndVerify.VerifyVirtualQueueContext.builder()
-            .populationSpecRange(Range.closedOpen(0, 10))
+            .populationSpecIntRange(IntRange.closedOpen(0, 10))
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, 10),
+                IntRange.closedOpen(0, 10),
                 TaskPopulateAndVerify.ExpectedVirtualQueue.in(VirtualQueue.PARKED)
             ))
             .populationSpecs(readyPopulationSpecs)
@@ -144,9 +139,9 @@ class VirtualQueueManagerPlannerImplTest extends BaseSpringIntegrationTest {
         taskPopulateAndVerify.verifyVirtualQueue(newToParkedVerifyCtx);
 
         var parkedToParkedVerifyCtx = TaskPopulateAndVerify.VerifyVirtualQueueContext.builder()
-            .populationSpecRange(Range.closedOpen(0, 5))
+            .populationSpecIntRange(IntRange.closedOpen(0, 5))
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, 10),
+                IntRange.closedOpen(0, 10),
                 TaskPopulateAndVerify.ExpectedVirtualQueue.in(VirtualQueue.PARKED)
             ))
             .populationSpecs(readyPopulationSpecs)
@@ -155,12 +150,12 @@ class VirtualQueueManagerPlannerImplTest extends BaseSpringIntegrationTest {
         taskPopulateAndVerify.verifyVirtualQueue(parkedToParkedVerifyCtx);
 
         var parkedToReadyAndParkedVerifyCtx = TaskPopulateAndVerify.VerifyVirtualQueueContext.builder()
-            .populationSpecRange(Range.closedOpen(5, 10))
+            .populationSpecIntRange(IntRange.closedOpen(5, 10))
             .expectedVirtualQueueByRange(Map.of(
-                Range.closedOpen(0, 1),
+                IntRange.closedOpen(0, 1),
                 TaskPopulateAndVerify.ExpectedVirtualQueue.in(VirtualQueue.READY),
 
-                Range.closedOpen(1, 10),
+                IntRange.closedOpen(1, 10),
                 TaskPopulateAndVerify.ExpectedVirtualQueue.in(VirtualQueue.PARKED)
             ))
             .populationSpecs(readyPopulationSpecs)

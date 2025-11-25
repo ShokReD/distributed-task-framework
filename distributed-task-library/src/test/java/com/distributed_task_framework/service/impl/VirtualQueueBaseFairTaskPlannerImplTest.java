@@ -3,6 +3,7 @@ package com.distributed_task_framework.service.impl;
 import com.distributed_task_framework.BaseSpringIntegrationTest;
 import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.model.Capabilities;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.model.NodeLoading;
 import com.distributed_task_framework.model.TaskDef;
 import com.distributed_task_framework.persistence.entity.PartitionEntity;
@@ -13,8 +14,6 @@ import com.distributed_task_framework.service.internal.PartitionTracker;
 import com.distributed_task_framework.service.internal.WorkerManager;
 import com.distributed_task_framework.settings.TaskSettings;
 import com.distributed_task_framework.utils.ExecutorUtils;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Range;
 import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
@@ -142,13 +141,13 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
         registerPartition(TASK_0);
 
         log.info("shouldPlanUnplannedTasks(): begging of population");
-        var readyPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 1), oneWithCreatedDateAndWithoutAffinity(LocalDateTime.now(clock)))
+        var readyPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 1), oneWithCreatedDateAndWithoutAffinity(LocalDateTime.now(clock)))
         );
         var unplannedTasks = taskPopulateAndVerify.populate(0, 10, VirtualQueue.READY, readyPopulationSpecs);
 
-        var delayedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 1), oneWithCreatedDateAndWithoutAffinity(LocalDateTime.now(clock).plusHours(1)))
+        var delayedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 1), oneWithCreatedDateAndWithoutAffinity(LocalDateTime.now(clock).plusHours(1)))
         );
         var delayedTasks = taskPopulateAndVerify.populate(0, 10, VirtualQueue.READY, delayedPopulationSpecs);
         log.info("shouldPlanUnplannedTasks(): finished population");
@@ -170,8 +169,8 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
 
         log.info("shouldPlanOrphanedTasks(): begging of population");
         UUID lostNodeId = UUID.randomUUID();
-        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 1), oneWithWorkerAndCreatedDateAndWithoutAffinity(lostNodeId, LocalDateTime.now(clock)))
+        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 1), oneWithWorkerAndCreatedDateAndWithoutAffinity(lostNodeId, LocalDateTime.now(clock)))
         );
         var unplannedTasks = taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, unplannedPopulationSpecs);
         log.info("shouldPlanOrphanedTasks(): finished population");
@@ -191,8 +190,8 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
         waitForNodeIsRegistered(taskDef, unknownTaskDef);
         registerPartition(List.of(TASK_0, TASK_1));
 
-        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
+        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
         );
         var unplannedTasks = taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, unplannedPopulationSpecs);
 
@@ -226,13 +225,13 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
         registerPartition(List.of(TASK_0, TASK_1));
 
         log.info("shouldApplyRestrictionsWhenPlan(): begging of population");
-        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 2), withWorkerAndWithoutAffinity(clusterProvider.nodeId(), 2))
+        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 2), withWorkerAndWithoutAffinity(clusterProvider.nodeId(), 2))
         );
         taskPopulateAndVerify.populate(0, 2, VirtualQueue.READY, alreadyPlannedPopulationSpecs);
 
-        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
+        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
         );
         taskPopulateAndVerify.populate(0, 200, VirtualQueue.READY, unplannedPopulationSpecs);
         log.info("shouldApplyRestrictionsWhenPlan(): finished population");
@@ -262,13 +261,13 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
         registerPartition(List.of(TASK_0, TASK_1));
 
         log.info("shouldApplyRestrictionsWhenPlan(): begging of population");
-        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 2), withWorkerAndWithoutAffinity(clusterProvider.nodeId(), 2))
+        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 2), withWorkerAndWithoutAffinity(clusterProvider.nodeId(), 2))
         );
         taskPopulateAndVerify.populate(0, 3, VirtualQueue.READY, alreadyPlannedPopulationSpecs);
 
-        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
+        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
         );
         taskPopulateAndVerify.populate(0, 200, VirtualQueue.READY, unplannedPopulationSpecs);
         log.info("shouldApplyRestrictionsWhenPlan(): finished population");
@@ -310,13 +309,13 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
         registerPartition(List.of(TASK_0, TASK_1));
 
         log.info("shouldApplyRestrictionsWhenPlan(): begging of population");
-        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 2), withWorkerAndWithoutAffinity(clusterProvider.nodeId(), 2))
+        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 2), withWorkerAndWithoutAffinity(clusterProvider.nodeId(), 2))
         );
         taskPopulateAndVerify.populate(0, 2, VirtualQueue.READY, alreadyPlannedPopulationSpecs);
 
-        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
+        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 2), withCreatedDateAndWithoutAffinity(2, LocalDateTime.now(clock)))
         );
         taskPopulateAndVerify.populate(0, 200, VirtualQueue.READY, unplannedPopulationSpecs);
         log.info("shouldApplyRestrictionsWhenPlan(): finished population");
@@ -415,14 +414,14 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
 
         log.info("shouldPlanFairlyWhenDifferentTasks(): begging of population");
         var firstDateTime = LocalDateTime.now(clock).minusHours(2);
-        var firstPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_1, TASK_0, firstDateTime))
+        var firstPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_1, TASK_0, firstDateTime))
         );
         var firstTasks = taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, firstPopulationSpecs);
 
         var secondDateTime = LocalDateTime.now(clock).minusHours(1);
-        var secondPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_1, TASK_1, secondDateTime))
+        var secondPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_1, TASK_1, secondDateTime))
         );
         var secondTasks = taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, secondPopulationSpecs);
         log.info("shouldPlanFairlyWhenDifferentTasks(): finished population");
@@ -450,14 +449,14 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
 
         log.info("shouldPlanFairlyWhenDifferentTasks(): begging of population");
         var firstDateTime = LocalDateTime.now(clock).minusHours(2);
-        var firstPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_1, TASK_0, firstDateTime))
+        var firstPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_1, TASK_0, firstDateTime))
         );
         var firstTasks = taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, firstPopulationSpecs);
 
         var secondDateTime = LocalDateTime.now(clock).minusHours(1);
-        var secondPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_2, TASK_0, secondDateTime))
+        var secondPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 1), oneWithAffinityGroupAndTaskNameAndCreatedDate(AFG_2, TASK_0, secondDateTime))
         );
         var secondTasks = taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, secondPopulationSpecs);
         log.info("shouldPlanFairlyWhenDifferentTasks(): finished population");
@@ -510,10 +509,10 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
         registerPartition(List.of(TASK_0, TASK_1, TASK_2));
 
         log.info("shouldNotPlanAndHandleLimitsCorrectlyWhenOneNodeIsOverloaded(): begging of population");
-        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-                Range.closedOpen(0, 1), withWorkerAndWithoutAffinity(NODE0, 3),
-                Range.closedOpen(1, 2), withWorkerAndWithoutAffinity(NODE1, 3),
-                Range.closedOpen(2, 3), withWorkerAndWithoutAffinity(NODE2, 3)
+        var alreadyPlannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+                IntRange.closedOpen(0, 1), withWorkerAndWithoutAffinity(NODE0, 3),
+                IntRange.closedOpen(1, 2), withWorkerAndWithoutAffinity(NODE1, 3),
+                IntRange.closedOpen(2, 3), withWorkerAndWithoutAffinity(NODE2, 3)
             )
         );
         taskPopulateAndVerify.populate(
@@ -523,8 +522,8 @@ class VirtualQueueBaseFairTaskPlannerImplTest extends BaseSpringIntegrationTest 
             alreadyPlannedPopulationSpecs
         );
 
-        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-            Range.closedOpen(0, 3), withCreatedDateAndWithoutAffinity(3, LocalDateTime.now(clock)))
+        var unplannedPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+            IntRange.closedOpen(0, 3), withCreatedDateAndWithoutAffinity(3, LocalDateTime.now(clock)))
         );
         var unplannedTasks = taskPopulateAndVerify.populate(
             0,

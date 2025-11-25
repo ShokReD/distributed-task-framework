@@ -2,11 +2,11 @@ package com.distributed_task_framework.service.impl;
 
 import com.distributed_task_framework.BaseSpringIntegrationTest;
 import com.distributed_task_framework.TaskPopulateAndVerify;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.persistence.entity.PartitionEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.service.internal.PartitionTracker;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +41,7 @@ class PartitionTrackerImplTest extends BaseSpringIntegrationTest {
     void shouldReinit() {
         //when
         var spec = taskPopulateAndVerify.makePopulationSpec(Map.of(
-            Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one())
+            IntRange.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.one())
         );
         var alreadyInReady = taskPopulateAndVerify.populate(0, 5, VirtualQueue.READY, spec);
 
@@ -94,8 +94,8 @@ class PartitionTrackerImplTest extends BaseSpringIntegrationTest {
         long currentTimeBucket = 100 / 5;
 
         var spec = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 1), oneWithTaskNameAndWithoutAffinity("exist_in_ready_queue"),
-                Range.closedOpen(1, 2), oneWithAffinityGroupAndTaskName("exist_in_ready_queue", "exist_in_ready_queue")
+                IntRange.closedOpen(0, 1), oneWithTaskNameAndWithoutAffinity("exist_in_ready_queue"),
+                IntRange.closedOpen(1, 2), oneWithAffinityGroupAndTaskName("exist_in_ready_queue", "exist_in_ready_queue")
             )
         );
         taskPopulateAndVerify.populate(0, 2, VirtualQueue.READY, spec);

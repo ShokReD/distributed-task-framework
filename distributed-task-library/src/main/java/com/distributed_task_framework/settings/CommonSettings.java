@@ -1,7 +1,6 @@
 package com.distributed_task_framework.settings;
 
-import com.google.common.collect.ImmutableRangeMap;
-import com.google.common.collect.Range;
+import com.distributed_task_framework.model.IntRange;
 import lombok.Builder;
 import lombok.Value;
 
@@ -43,7 +42,6 @@ public class CommonSettings {
     @Builder.Default
     PlannerSettings plannerSettings = createDefaultPlannerSettings();
 
-    @SuppressWarnings("UnstableApiUsage")
     private static PlannerSettings createDefaultPlannerSettings() {
         return PlannerSettings.builder()
             .watchdogInitialDelayMs(5000)
@@ -53,12 +51,11 @@ public class CommonSettings {
             .batchSize(1000)
             .newBatchSize(300)
             .deletedBatchSize(300)
-            .pollingDelay(ImmutableRangeMap.<Integer, Integer>builder()
-                .put(Range.openClosed(-1, 0), 1000)
-                .put(Range.openClosed(0, 100), 500)
-                .put(Range.openClosed(100, 1000), 0)
-                .build()
-            )
+            .pollingDelay(Map.of(
+                IntRange.openClosed(-1, 0), 1000,
+                IntRange.openClosed(0, 100), 500,
+                IntRange.openClosed(100, 1000), 0
+            ))
             .affinityGroupScannerTimeOverlap(Duration.ofMinutes(1))
             .partitionTrackingTimeWindow(Duration.ofMinutes(1))
             .nodeCpuLoadingLimit(0.95)
@@ -68,15 +65,14 @@ public class CommonSettings {
     @Builder.Default
     WorkerManagerSettings workerManagerSettings = createDefaultWorkerManagerSettings();
 
-    @SuppressWarnings("UnstableApiUsage")
     private static WorkerManagerSettings createDefaultWorkerManagerSettings() {
         return WorkerManagerSettings.builder()
             .maxParallelTasksInNode(100)
-            .manageDelay(ImmutableRangeMap.<Integer, Integer>builder()
-                .put(Range.openClosed(-1, 0), 1000)
-                .put(Range.openClosed(0, 50), 500)
-                .put(Range.openClosed(50, 100), 250)
-                .build()
+            .manageDelay(Map.of(
+                    IntRange.openClosed(-1, 0), 1000,
+                    IntRange.openClosed(0, 50), 500,
+                    IntRange.openClosed(50, 100), 250
+                )
             )
             .build();
     }
@@ -94,7 +90,6 @@ public class CommonSettings {
     @Builder.Default
     DeliveryManagerSettings deliveryManagerSettings = createDefaultDeliveryManagerSettings();
 
-    @SuppressWarnings("UnstableApiUsage")
     private static DeliveryManagerSettings createDefaultDeliveryManagerSettings() {
         return DeliveryManagerSettings.builder()
             .watchdogInitialDelayMs(5000)
@@ -104,17 +99,14 @@ public class CommonSettings {
             .responseTimeout(Duration.ofSeconds(10))
             .readTimeout(Duration.ofSeconds(5))
             .writeTimeout(Duration.ofSeconds(30))
-            .manageDelay(ImmutableRangeMap.<Integer, Integer>builder()
-                .put(Range.openClosed(-1, 0), 1000)
-                .put(Range.openClosed(0, 100), 500)
-                .put(Range.openClosed(100, 1000), 250)
-                .build())
+            .manageDelay(Map.of(
+                IntRange.openClosed(-1, 0), 1000,
+                IntRange.openClosed(0, 100), 500,
+                IntRange.openClosed(100, 1000), 250
+            ))
             .build();
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     @Value
     @Builder(toBuilder = true)
     public static class PlannerSettings {
@@ -167,11 +159,11 @@ public class CommonSettings {
         Duration partitionTrackingTimeWindow;
         /**
          * Function describe delay between polling of db depends on last number of ready to plan tasks.
-         * key - number of tasks in last polling
-         * value - delay in ms before next polling
+         * <p>key - number of tasks in last polling
+         * <p>value - delay in ms before next polling
          */
         @Builder.Default
-        ImmutableRangeMap<Integer, Integer> pollingDelay = ImmutableRangeMap.<Integer, Integer>builder().build();
+        Map<IntRange, Integer> pollingDelay = Map.of();
     }
 
     @Value
@@ -199,9 +191,6 @@ public class CommonSettings {
         Duration cpuCalculatingTimeWindow;
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     @Value
     @Builder(toBuilder = true)
     public static class WorkerManagerSettings {
@@ -215,7 +204,7 @@ public class CommonSettings {
          * value - delay in ms before next polling
          */
         @Builder.Default
-        ImmutableRangeMap<Integer, Integer> manageDelay = ImmutableRangeMap.<Integer, Integer>builder().build();
+        Map<IntRange, Integer> manageDelay = Map.of();
     }
 
     @Value
@@ -236,15 +225,12 @@ public class CommonSettings {
     public static class RemoteApps {
         /**
          * Mapping of name remote application to its URL.
-         * Used in order to execute remote (outside of current cluster) tasks.
+         * Used in order to execute remote (outside current cluster) tasks.
          */
         @Builder.Default
         Map<String, URL> appToUrl = new HashMap<>();
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     @Value
     @Builder(toBuilder = true)
     public static class DeliveryManagerSettings {
@@ -295,6 +281,6 @@ public class CommonSettings {
          * value - delay in ms before next polling
          */
         @Builder.Default
-        ImmutableRangeMap<Integer, Integer> manageDelay = ImmutableRangeMap.<Integer, Integer>builder().build();
+        Map<IntRange, Integer> manageDelay = Map.of();
     }
 }

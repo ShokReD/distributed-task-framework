@@ -2,14 +2,13 @@ package com.distributed_task_framework.service.impl;
 
 import com.distributed_task_framework.BaseMetricTest;
 import com.distributed_task_framework.TaskPopulateAndVerify;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.model.TaskDef;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
 import com.distributed_task_framework.service.internal.MetricHelper;
 import com.distributed_task_framework.service.internal.PlannerGroups;
 import com.distributed_task_framework.service.internal.PlannerService;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +21,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -130,9 +130,9 @@ class VirtualQueueStatHelperTest extends BaseMetricTest {
             TaskDef.privateTaskDef(getTaskName(2), String.class)
         );
 
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-                Range.closedOpen(0, 1), withWorker(3, getNode(0)),
-                Range.closedOpen(1, 2), withWorkerAndWithoutAffinity(3, getNode(1))
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+                IntRange.closedOpen(0, 1), withWorker(3, getNode(0)),
+                IntRange.closedOpen(1, 2), withWorkerAndWithoutAffinity(3, getNode(1))
             )
         );
         var allAssignedTasks = taskPopulateAndVerify.populate(0, 18, VirtualQueue.READY, populationSpecs);
@@ -287,10 +287,10 @@ class VirtualQueueStatHelperTest extends BaseMetricTest {
             TaskDef.privateTaskDef(getTaskName(2), String.class)
         );
 
-        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(ImmutableMap.of(
-                Range.closedOpen(0, 1), withoutAffinity(3),
-                Range.closedOpen(1, 2), of(3),
-                Range.closedOpen(2, 3), deferred(3)
+        List<TaskPopulateAndVerify.PopulationSpec> populationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
+                IntRange.closedOpen(0, 1), withoutAffinity(3),
+                IntRange.closedOpen(1, 2), of(3),
+                IntRange.closedOpen(2, 3), deferred(3)
             )
         );
         List<TaskEntity> allTasks = new ArrayList<>();

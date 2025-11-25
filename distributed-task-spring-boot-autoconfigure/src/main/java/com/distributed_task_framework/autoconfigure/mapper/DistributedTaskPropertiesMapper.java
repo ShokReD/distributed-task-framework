@@ -2,14 +2,13 @@ package com.distributed_task_framework.autoconfigure.mapper;
 
 import com.distributed_task_framework.autoconfigure.DistributedTaskProperties;
 import com.distributed_task_framework.exception.TaskConfigurationException;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.settings.BackoffRetry;
 import com.distributed_task_framework.settings.CommonSettings;
 import com.distributed_task_framework.settings.FixedRetry;
 import com.distributed_task_framework.settings.OffRetry;
 import com.distributed_task_framework.settings.Retry;
 import com.distributed_task_framework.settings.TaskSettings;
-import com.google.common.collect.ImmutableRangeMap;
-import com.google.common.collect.Range;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
@@ -669,14 +668,11 @@ public class DistributedTaskPropertiesMapper {
         return map(mergedSettings);
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     public CommonSettings.DeliveryManagerSettings merge(CommonSettings.DeliveryManagerSettings deliveryManagerSettings,
                                                         DistributedTaskProperties.DeliveryManager deliveryManager) {
         var mergedManagerSettings = mergeInternal(deliveryManagerSettings, deliveryManager);
         if (!deliveryManager.getManageDelay().isEmpty()) {
-            ImmutableRangeMap<Integer, Integer> polingDelay = mapRangeDelayProperty(deliveryManager.getManageDelay());
+            Map<IntRange, Integer> polingDelay = mapRangeDelayProperty(deliveryManager.getManageDelay());
             mergedManagerSettings = mergedManagerSettings.toBuilder()
                 .manageDelay(polingDelay)
                 .build();
@@ -737,27 +733,21 @@ public class DistributedTaskPropertiesMapper {
         return map(mergedRegistry);
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     public DistributedTaskProperties.DeliveryManager map(CommonSettings.DeliveryManagerSettings deliveryManagerSettings) {
         var deliveryManager = mapInternal(deliveryManagerSettings);
         Map<Integer, Integer> manageDelay = new HashMap<>();
-        deliveryManagerSettings.getManageDelay().asMapOfRanges()
+        deliveryManagerSettings.getManageDelay()
             .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
         return deliveryManager.toBuilder()
             .manageDelay(manageDelay)
             .build();
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     public CommonSettings.WorkerManagerSettings merge(CommonSettings.WorkerManagerSettings workerManagerSettings,
                                                       DistributedTaskProperties.WorkerManager workerManager) {
         var mergedManagerSettings = mergeInternal(workerManagerSettings, workerManager);
         if (!workerManager.getManageDelay().isEmpty()) {
-            ImmutableRangeMap<Integer, Integer> manageDelay = mapRangeDelayProperty(workerManager.getManageDelay());
+            Map<IntRange, Integer> manageDelay = mapRangeDelayProperty(workerManager.getManageDelay());
             mergedManagerSettings = mergedManagerSettings.toBuilder()
                 .manageDelay(manageDelay)
                 .build();
@@ -772,13 +762,10 @@ public class DistributedTaskPropertiesMapper {
         return map(mergedRegistry);
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     public DistributedTaskProperties.WorkerManager map(CommonSettings.WorkerManagerSettings workerManagerSettings) {
         var workerManager = mapInternal(workerManagerSettings);
         Map<Integer, Integer> manageDelay = new HashMap<>();
-        workerManagerSettings.getManageDelay().asMapOfRanges()
+        workerManagerSettings.getManageDelay()
             .forEach((range, limit) -> manageDelay.put(range.upperEndpoint(), limit));
         return workerManager.toBuilder()
             .manageDelay(manageDelay)
@@ -792,46 +779,37 @@ public class DistributedTaskPropertiesMapper {
         return map(mergedRegistry);
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     public CommonSettings.PlannerSettings merge(CommonSettings.PlannerSettings defaultPlannerSettings,
                                                 DistributedTaskProperties.Planner planner) {
         defaultPlannerSettings = mergeInternal(defaultPlannerSettings, planner);
         var plannerBuilder = defaultPlannerSettings.toBuilder();
         if (!planner.getPollingDelay().isEmpty()) {
-            ImmutableRangeMap<Integer, Integer> pollingDelay = mapRangeDelayProperty(planner.getPollingDelay());
+            Map<IntRange, Integer> pollingDelay = mapRangeDelayProperty(planner.getPollingDelay());
             plannerBuilder.pollingDelay(pollingDelay);
         }
         return plannerBuilder.build();
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
-    public ImmutableRangeMap<Integer, Integer> mapRangeDelayProperty(Map<Integer, Integer> rangeDelay) {
+    public Map<IntRange, Integer> mapRangeDelayProperty(Map<Integer, Integer> rangeDelay) {
         List<Integer> orderedNumbers = rangeDelay.keySet().stream()
             .sorted()
             .toList();
-        var rangeMapBuilder = ImmutableRangeMap.<Integer, Integer>builder();
+        var rangeMap = new HashMap<IntRange, Integer>();
         int lastNumber = -1;
         for (int number : orderedNumbers) {
             if (number <= lastNumber) {
                 throw new TaskConfigurationException("Incorrect ordering of polling-delay");
             }
-            rangeMapBuilder.put(Range.openClosed(lastNumber, number), rangeDelay.get(number));
+            rangeMap.put(IntRange.openClosed(lastNumber, number), rangeDelay.get(number));
             lastNumber = number;
         }
-        return rangeMapBuilder.build();
+        return rangeMap;
     }
 
-    /**
-     * @noinspection UnstableApiUsage
-     */
     public DistributedTaskProperties.Planner map(CommonSettings.PlannerSettings defaultPlannerSettings) {
         DistributedTaskProperties.Planner result = mapInternal(defaultPlannerSettings);
         Map<Integer, Integer> pollingDelay = new HashMap<>();
-        defaultPlannerSettings.getPollingDelay().asMapOfRanges()
+        defaultPlannerSettings.getPollingDelay()
             .forEach((range, limit) -> pollingDelay.put(range.upperEndpoint(), limit));
         return result.toBuilder()
             .pollingDelay(pollingDelay)

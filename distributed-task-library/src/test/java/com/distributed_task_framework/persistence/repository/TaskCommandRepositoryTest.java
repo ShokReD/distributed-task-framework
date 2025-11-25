@@ -4,9 +4,9 @@ import com.distributed_task_framework.TaskPopulateAndVerify;
 import com.distributed_task_framework.comparator.RoundingLocalDateTimeComparator;
 import com.distributed_task_framework.exception.OptimisticLockException;
 import com.distributed_task_framework.exception.UnknownTaskException;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.persistence.entity.TaskEntity;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -214,19 +214,15 @@ class TaskCommandRepositoryTest extends BaseRepositoryTest {
 
     private TaskEntity createSimpleTaskEntity(VirtualQueue virtualQueue) {
         var spec = taskPopulateAndVerify.makePopulationSpec(
-            Map.of(
-                Range.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one()
-            )
+            Map.of(IntRange.closedOpen(0, 1), TaskPopulateAndVerify.GenerationSpec.one())
         );
         var populateNewTasks = taskPopulateAndVerify.populate(0, 1, virtualQueue, spec);
         return populateNewTasks.iterator().next();
     }
 
     private void verifyInRepository(TaskEntity taskEntity) {
-        //noinspection AssertBetweenInconvertibleTypes
         Assertions.assertThat(taskRepository.find(taskEntity.getId()))
-            .isPresent()
-            .get()
+            .isPresent().get()
             .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
                 .withComparatorForType(new RoundingLocalDateTimeComparator(), LocalDateTime.class)
                 .withIgnoredFields("version")

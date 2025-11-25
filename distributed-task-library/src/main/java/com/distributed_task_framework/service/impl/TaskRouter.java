@@ -1,7 +1,7 @@
 package com.distributed_task_framework.service.impl;
 
 import com.distributed_task_framework.model.BatchRouteMap;
-import com.distributed_task_framework.model.BatchRouteMap.TaskNameAndNode;
+import com.distributed_task_framework.model.TaskNameAndNode;
 import com.distributed_task_framework.model.BatchRouteRequest;
 import com.distributed_task_framework.model.NodeCapacity;
 import com.distributed_task_framework.model.NodeTask;

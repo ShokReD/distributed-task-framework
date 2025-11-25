@@ -1,10 +1,10 @@
 package com.distributed_task_framework.persistence.repository;
 
 import com.distributed_task_framework.TaskPopulateAndVerify;
+import com.distributed_task_framework.model.IntRange;
 import com.distributed_task_framework.model.NodeTaskActivity;
 import com.distributed_task_framework.model.Partition;
 import com.distributed_task_framework.persistence.entity.VirtualQueue;
-import com.google.common.collect.Range;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +37,7 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
         //10 * 2 = 20 workers
         var workerId = TaskPopulateAndVerify.getNode(0);
         var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.withWorker(2, workerId)
+                IntRange.closedOpen(0, 10), TaskPopulateAndVerify.GenerationSpec.withWorker(2, workerId)
             )
         );
         taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, knownPopulationSpecs);
@@ -50,7 +50,7 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
         taskPopulateAndVerify.populate(0, 20, VirtualQueue.DELETED, knownPopulationSpecs);
 
         var unknownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(10, 20), TaskPopulateAndVerify.GenerationSpec.withAutoAssignedWorker(2)
+                IntRange.closedOpen(10, 20), TaskPopulateAndVerify.GenerationSpec.withAutoAssignedWorker(2)
             )
         );
         taskPopulateAndVerify.populate(0, 20, VirtualQueue.READY, unknownPopulationSpecs);
@@ -108,7 +108,7 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
     private Set<Partition> prepareDataToPlanInReadyQueue() {
         //5 * 2 = 10 unique afg+taskName
         var knownPopulationSpecs = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(0, 5), TaskPopulateAndVerify.GenerationSpec.of(2)
+                IntRange.closedOpen(0, 5), TaskPopulateAndVerify.GenerationSpec.of(2)
             )
         );
         //200/10 = 20 tasks for each affinityGroup+taskName
@@ -117,8 +117,8 @@ class TaskVirtualQueueBasePlannerRepositoryTest extends BaseRepositoryTest {
 
         //5 unique afg+taskName
         var knownPopulationSpecsWithShortSize = taskPopulateAndVerify.makePopulationSpec(Map.of(
-                Range.closedOpen(5, 6), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
-                Range.closedOpen(6, 10), TaskPopulateAndVerify.GenerationSpec.one()
+                IntRange.closedOpen(5, 6), TaskPopulateAndVerify.GenerationSpec.oneWithoutAffinity(),
+                IntRange.closedOpen(6, 10), TaskPopulateAndVerify.GenerationSpec.one()
             )
         );
         //50/5 = 10 tasks for each affinityGroup+taskName
